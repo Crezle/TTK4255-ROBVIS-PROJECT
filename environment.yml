@@ -1,0 +1,11 @@
+name: ttk4255
+channels:
+  - defaults
+dependencies:
+  - pip
+  - python=3.7
+  - pip:
+    - numpy==1.21.5
+    - matplotlib
+    - scipy
+    - opencv-python

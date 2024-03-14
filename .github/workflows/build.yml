@@ -1,0 +1,44 @@
+run-name: Build Project created by ${{ github.actor }}
+
+on:
+  pull_request:
+  push:
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash -l {0}
+
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Miniconda
+        uses: conda-incubator/setup-miniconda@v3
+        with:
+          auto-activate-base: false
+          activate-environment: ttk4255
+          environment-file: environment.yml
+
+      - name: Check Conda Environment Status
+        run: |
+          conda info
+          conda list
+
+      - name: Run Project
+        run: python src/main.py
+
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: Artifacts-${{ runner.os }}
+          path: |
+            data/calibration/failed/**
+            data/calibration/results/**
+            data/undistortion/**

@@ -1,3 +1,10 @@
+# Custom ignore
+data/calibration/failed/**
+data/calibration/results/**
+data/undistortion/**
+!data/undistortion/sample_image.jpg
+**/*.txt
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
