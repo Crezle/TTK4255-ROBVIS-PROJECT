@@ -5,7 +5,7 @@ import cv2 as cv
 import os
 np.random.seed(0)
 
-def undistort(img_path='data/undistortion/sample_image.jpg'):
+def undistort(img_path='data/sample_image.jpg'):
     
     file_name = img_path.split('/')[-1]  # Extract the file name of imgpath
     base_name = file_name.split('.')[0] 
