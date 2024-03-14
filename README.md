@@ -16,6 +16,18 @@ For this project, the following equipments were used:
   - Name                 :  ESP32-CAM
   - Camera               :  OV2640
 
+The following environment also needs to be installed to include the needed packages, this can easily be done by executing,
+
+```
+conda env create -f environment.yml
+```
+
+If this has already been done before, but a potential update is desired, run,
+
+```
+conda env update -f environment.yml --prune
+```
+
 ## How-to-run
 
 Currently, our code only performs calibration and undistortion which can be run without any inputs:
