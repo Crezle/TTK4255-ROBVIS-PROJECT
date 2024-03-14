@@ -28,7 +28,7 @@ def calibrate_camera(rerun=False):
     # Termination criteria for cornerSubPix routine
     subpix_criteria = (cv.TERM_CRITERIA_EPS + cv.TERM_CRITERIA_MAX_ITER, 30, 0.001)
 
-    if exists(join(output_folder, 'u_all.npy') and not rerun):
+    if exists(join(output_folder, 'u_all.npy')) and not rerun:
         u_all = np.load(join(output_folder, 'u_all.npy'))
         X_all = np.load(join(output_folder, 'X_all.npy'))
         image_size = np.loadtxt(join(output_folder, 'image_size.txt')).astype(np.int32)
