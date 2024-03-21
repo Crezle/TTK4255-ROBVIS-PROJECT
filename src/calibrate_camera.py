@@ -5,7 +5,7 @@ import os
 from matplotlib import pyplot as plt
 from os.path import join, basename, realpath, dirname, exists, splitext
 
-def calibrate_camera(rerun=False):
+def calibrate_camera(rerun_detection=False):
     image_path_pattern  = 'data/calibration/images/*.jpg'
     output_folder       = 'data/calibration/results/'
     failed_img_folder   = 'data/calibration/failed/'
@@ -28,7 +28,7 @@ def calibrate_camera(rerun=False):
     # Termination criteria for cornerSubPix routine
     subpix_criteria = (cv.TERM_CRITERIA_EPS + cv.TERM_CRITERIA_MAX_ITER, 30, 0.001)
 
-    if exists(join(output_folder, 'u_all.npy')) and not rerun:
+    if exists(join(output_folder, 'u_all.npy')) and not rerun_detection:
         u_all = np.load(join(output_folder, 'u_all.npy'))
         X_all = np.load(join(output_folder, 'X_all.npy'))
         image_size = np.loadtxt(join(output_folder, 'image_size.txt')).astype(np.int32)

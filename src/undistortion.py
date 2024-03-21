@@ -5,8 +5,8 @@ import cv2 as cv
 import os
 np.random.seed(0)
 
-def undistort(img_path='data/sample_image.jpg'):
-    
+def undistort(img_path='data/sample_image.jpg', save_img=False):
+    print("Undistorting image...")
     file_name = img_path.split('/')[-1]  # Extract the file name of imgpath
     base_name = file_name.split('.')[0] 
     
@@ -25,8 +25,8 @@ def undistort(img_path='data/sample_image.jpg'):
 
     path = "data/undistortion/"
 
-    sample_img = cv.imread(img_path)
-    h, w = sample_img.shape[:2]
+    img = cv.imread(img_path)
+    h, w = img.shape[:2]
 
     # Sample distortion coefficients from normal distribution
     # Number of samples
@@ -35,12 +35,15 @@ def undistort(img_path='data/sample_image.jpg'):
     for i in range(n):
         dc_sampled = np.random.normal(dc, dc_std)
         newcameramtx_sampled, roi_sampled = cv.getOptimalNewCameraMatrix(K, dc, (w, h), 1, (w, h))
-        undist_img_samled = cv.undistort(sample_img, K, dc_sampled, None, newcameramtx_sampled)
-        cv.imwrite(join(path, f"undistorted_{base_name}_sampled_{i}.jpg"), undist_img_samled)
-
+        undist_img_samled = cv.undistort(img, K, dc_sampled, None, newcameramtx_sampled)
 
     newcameramtx, roi = cv.getOptimalNewCameraMatrix(K, dc, (w, h), 1, (w, h))
-    undist_sample_img = cv.undistort(sample_img, K, dc, None, newcameramtx)
+    undist_img = cv.undistort(img, K, dc, None, newcameramtx)
 
-    cv.imwrite(join(path, f"undistorted_{base_name}_MLE.jpg"), undist_sample_img)
-    cv.imwrite(join(path, file_name), sample_img)
+    if save_img:
+        cv.imwrite(join(path, f"undistorted_{base_name}_sampled_{i}.jpg"), undist_img_samled)
+        cv.imwrite(join(path, f"undistorted_{base_name}_MLE.jpg"), undist_img)
+        cv.imwrite(join(path, file_name), img)
+
+    print("Undistortion complete!")
+    return undist_img
