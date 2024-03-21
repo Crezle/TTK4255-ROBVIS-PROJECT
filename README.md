@@ -2,6 +2,18 @@
 
 Code for Robotic Vision project in TTK4255 by Christian Le and Klevis Resuli.
 
+## The Project
+
+Smart traffic control system
+The idea is creating a system based on ESP32-Cam that is going to control the traffic light based on the number of cars on each side of an intersection making the traffic easier and also giving priority to emergencies(case of an ambulance being in the intersection).
+Our goals consists on:
+1. Calibrating the ESP32-CAM either manually or by using OpenCV (Finding K matrix and distortion parameters)
+2. Capture sequence of images of car trajectories from one angle, where each car has a marker (something like AprilTags from Assignment 7)
+3. Sending those images to the python script and identify the number of cars. This will be done by mapping the position of the cars into 3d space and and perhaps repoject the image to be seen from another perspective, since it might be easy to identify the cars.
+4. After identifying the number of cars in each side of the intersection we send the data back to ESP32-CAM and decide which traffic light to turn on.
+
+(Only step 1 has currently been implemented)
+
 ## Prerequisites
 
 For this project, the following equipments were used:
