@@ -3,15 +3,15 @@ import numpy as np
 from datetime import datetime
 import os
 
-def draw_corners(img, corners, ids, threshold, show_img=False):
+def draw_corners(img, corners, ids, threshold, show_img=False, foldername="unnamed_detections"):
     color_img = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
     cv2.aruco.drawDetectedMarkers(color_img, corners, ids)
     if show_img:
         cv2.imshow(f'threshold: {threshold}', color_img)
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    if not os.path.exists("data/apriltags/detections/successful_detections"):
-        os.makedirs("data/apriltags/detections/successful_detections")
-    cv2.imwrite(f"data/apriltags/detections/successful_detections/threshold{threshold}.jpg", color_img)
+    if not os.path.exists(f"data/apriltags/detections/{foldername}"):
+        os.makedirs(f"data/apriltags/detections/{foldername}")
+    cv2.imwrite(f"data/apriltags/detections/{foldername}/threshold{threshold}.jpg", color_img)
 
 def configure_aruco_params(tag="april_tag_36h11", accuracy=0.10):
     if tag == "april_tag_36h11":
@@ -38,9 +38,9 @@ def sharpen_image(img):
 def main():
     aruco_dict, arucoParams = configure_aruco_params()
     # Import image
-    img_path = "data/apriltags/multiple_test/0002.jpg"
+    img_path = "data/apriltags/multiple_test/0007.jpg"
     img = cv2.imread(img_path, cv2.IMREAD_GRAYSCALE)
-    gt_num_corners = 18
+    gt_num_corners = 24
     img = sharpen_image(img)
     
     min_threshold = int(255*0.1)
@@ -55,15 +55,16 @@ def main():
         
         if len(corners) == gt_num_corners:
             best_num_corners = len(corners)
-            draw_corners(img, corners, ids, threshold)
-        elif len(corners) > best_num_corners:
+            draw_corners(img, corners, ids, threshold, foldername="eq_to_gt_detections")
+        elif len(corners) > best_num_corners and len(corners) < gt_num_corners:
+            best_threshold = threshold
             best_num_corners = len(corners)
             best_img = temp_img
     
     if best_num_corners != gt_num_corners:
         print(f"Best number of corners: {best_num_corners}, threshold: {best_threshold}")
         print(f"corners: {len(corners)}, rejected: {len(rejected)}")
-        draw_corners(best_img, corners, ids, best_threshold, show_img=True)
+        draw_corners(best_img, corners, ids, best_threshold, foldername="most_detections")
 
     cv2.waitKey(0)
     cv2.destroyAllWindows()
