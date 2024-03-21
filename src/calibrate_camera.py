@@ -17,7 +17,7 @@ def calibrate_camera(rerun=False):
         os.makedirs(failed_img_folder)
 
     board_size = (7, 7) # Number of internal corners of the checkerboard (see tutorial)
-    square_size = 2.9   # Real world length of the sides of the squares
+    square_size = 0.029   # Real world length of the sides of the squares
 
     calibrate_flags = 0 # Use default settings (three radial and two tangential)
     # calibrate_flags = cv.CALIB_ZERO_TANGENT_DIST|cv.CALIB_FIX_K3 # Disable tangential distortion and third radial distortion coefficient

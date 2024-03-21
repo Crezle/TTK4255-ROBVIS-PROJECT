@@ -1,11 +1,12 @@
-name: ttk4255
+name: robvis_project
 channels:
   - defaults
 dependencies:
   - pip
-  - python=3.7
+  - python=3.11
   - pip:
-    - numpy==1.21.5
+    - numpy
     - matplotlib
     - scipy
     - opencv-python
+    - opencv-contrib-python
