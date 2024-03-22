@@ -5,37 +5,43 @@ import cv2
 import os
 np.random.seed(0)
 
-def enhance_image(img):
-    img = cv2.GaussianBlur(img, (5, 5), 0)
-
+def _sharpen_image(img, kernel1_dim, kernel2_dim, sigma1, sigma2):
+    
     sharp_kernel = np.array([[-1, -1, -1],
                             [-1, 9, -1],
                             [-1, -1, -1]])
+    
+    img = cv2.GaussianBlur(img, (kernel1_dim, kernel1_dim), sigma1)
 
     img = cv2.filter2D(img, -1, sharp_kernel)
     img = cv2.filter2D(img, -1, sharp_kernel)
-    img = cv2.GaussianBlur(img, (3, 3), 4)
+    img = cv2.GaussianBlur(img, (kernel2_dim, kernel2_dim), sigma2)
 
     return img
 
-def learn_enhance_params(imgs_path='data/apriltags/multiple_test/', save_params=False):
+def _threshold_img(img, threshold, max_pixel_value=255):
     '''
-    Learns the best parameters for april tag detection
-    Args:
-        imgs_path: path to the folder containing images
-        save_params: if True, saves the parameters to a file
-    Returns:
-        None
+    Thresholds the image
     '''
-    for filename in os.listdir(imgs_path):
-        if filename.endswith('.jpg'):
-            img = cv2.imread(join(imgs_path, filename))
-            img = enhance_image(img)
+    img = cv2.threshold(img, threshold, max_pixel_value, cv2.THRESH_BINARY)[1]
+    
+    return img
 
-def undistort(img_path='data/sample_image.jpg', calib_results_folder='chessboard' ,save_img=False):
+def enhance_image(img, threshold, kernel1_dim=5, kernel2_dim=3, sigma1=0, sigma2=4):
+    '''
+    Enhances images for better detection
+    '''
+    img = _sharpen_image(img, kernel1_dim, kernel2_dim, sigma1, sigma2)
+    img = _threshold_img(img, threshold)
+    
+    return img
+
+def undistort(img=None, img_path='data/sample_image.jpg', calib_results_folder='chessboard', save_img=False, save_path="data/undistortion/"):
     print("Undistorting image...")
-    file_name = img_path.split('/')[-1]  # Extract the file name of imgpath
-    base_name = file_name.split('.')[0] 
+    
+    if img is None:
+        file_name = img_path.split('/')[-1]  # Extract the file name of imgpath
+        base_name = file_name.split('.')[0] 
     
     folder = f'data/calibration/results/{calib_results_folder}'
 
@@ -50,9 +56,9 @@ def undistort(img_path='data/sample_image.jpg', calib_results_folder='chessboard
 
     dc_std = np.array([k1, k2, p1, p2, k3])
 
-    path = "data/undistortion/"
+    if img is None:
+        img = cv2.imread(img_path)
 
-    img = cv2.imread(img_path)
     h, w = img.shape[:2]
 
     # Sample distortion coefficients from normal distribution
@@ -67,10 +73,10 @@ def undistort(img_path='data/sample_image.jpg', calib_results_folder='chessboard
     newcameramtx, roi = cv2.getOptimalNewCameraMatrix(K, dc, (w, h), 1, (w, h))
     undist_img = cv2.undistort(img, K, dc, None, newcameramtx)
 
-    if save_img:
-        cv2.imwrite(join(path, f"undistorted_{base_name}_sampled_{i}.jpg"), undist_img_samled)
-        cv2.imwrite(join(path, f"undistorted_{base_name}_MLE.jpg"), undist_img)
-        cv2.imwrite(join(path, file_name), img)
+    if save_img and img is None:
+        cv2.imwrite(join(save_path, f"undistorted_{base_name}_sampled_{i}.jpg"), undist_img_samled)
+        cv2.imwrite(join(save_path, f"undistorted_{base_name}_MLE.jpg"), undist_img)
+        cv2.imwrite(join(save_path, file_name), img)
 
     print("Undistortion complete!")
     return undist_img
