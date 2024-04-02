@@ -36,12 +36,12 @@ def enhance_image(img, threshold, kernel1_dim=5, kernel2_dim=3, sigma1=0, sigma2
     
     return img
 
-def undistort(img=None, img_path='data/sample_image.jpg', calib_results_folder='chessboard', save_img=False, save_path="data/undistortion/"):
-    print("Undistorting image...")
+def undistort(img_path='data/sample_image.jpg', calib_results_folder='checkerboard_6x9_8.5', save_img=False, save_path="data/undistortion/", debug=False):
+    if debug:
+        print("Undistorting image...")
     
-    if img is None:
-        file_name = img_path.split('/')[-1]  # Extract the file name of imgpath
-        base_name = file_name.split('.')[0] 
+    file_name = img_path.split('/')[-1]  # Extract the file name of imgpath
+    base_name = file_name.split('.')[0] 
     
     folder = f'data/calibration/results/{calib_results_folder}'
 
@@ -56,8 +56,7 @@ def undistort(img=None, img_path='data/sample_image.jpg', calib_results_folder='
 
     dc_std = np.array([k1, k2, p1, p2, k3])
 
-    if img is None:
-        img = cv2.imread(img_path)
+    img = cv2.imread(img_path)
 
     h, w = img.shape[:2]
 
@@ -65,18 +64,23 @@ def undistort(img=None, img_path='data/sample_image.jpg', calib_results_folder='
     # Number of samples
     n = 5
 
+    if not os.path.exists(save_path) and save_img:
+        os.makedirs(save_path)
+
     for i in range(n):
         dc_sampled = np.random.normal(dc, dc_std)
-        newcameramtx_sampled, roi_sampled = cv2.getOptimalNewCameraMatrix(K, dc, (w, h), 1, (w, h))
+        newcameramtx_sampled, roi_sampled = cv2.getOptimalNewCameraMatrix(K, dc_sampled, (w, h), 1, (w, h))
         undist_img_samled = cv2.undistort(img, K, dc_sampled, None, newcameramtx_sampled)
+        if save_img:
+            cv2.imwrite(join(save_path, f"undistorted_{base_name}_sampled_{i}.jpg"), undist_img_samled)
 
     newcameramtx, roi = cv2.getOptimalNewCameraMatrix(K, dc, (w, h), 1, (w, h))
     undist_img = cv2.undistort(img, K, dc, None, newcameramtx)
 
-    if save_img and img is None:
-        cv2.imwrite(join(save_path, f"undistorted_{base_name}_sampled_{i}.jpg"), undist_img_samled)
+    if save_img:
         cv2.imwrite(join(save_path, f"undistorted_{base_name}_MLE.jpg"), undist_img)
         cv2.imwrite(join(save_path, file_name), img)
 
-    print("Undistortion complete!")
+    if debug:
+        print("Undistortion complete!")
     return undist_img

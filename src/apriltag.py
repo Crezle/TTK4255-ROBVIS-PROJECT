@@ -17,16 +17,16 @@ def _draw_corners(img, corners, ids, show_img=False, foldername="unnamed_detecti
         os.makedirs(f"data/apriltags/detections/{foldername}")
     cv2.imwrite(f"data/apriltags/detections/{foldername}/cornerdetections.jpg", color_img)
 
-def configure_aruco_params(tag="april_tag_36h11", accuracy=0.10):
-    if tag == "april_tag_36h11":
+def configure_aruco_params(tag="APRILTAG_36h11", accuracy=0.10):
+    if tag == "APRILTAG_36h11":
         aruco_dict = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_APRILTAG_36h11)
     else:
-        raise NotImplementedError("Only april_tag_36h11 is supported at the moment.")
+        raise NotImplementedError("Only APRILTAG_36h11 is supported at the moment.")
     aruco_params = cv2.aruco.DetectorParameters()
     aruco_params.polygonalApproxAccuracyRate = accuracy
     return aruco_dict, aruco_params
 
-def train_parameters_apriltag(images_path, num_corners, save_params=False, evals=100):
+def train_parameters_apriltag(images_path, num_corners, tag="APRILTAG_36h11", save_params=False, evals=100):
     '''
     Takes in undistorted images and trains the parameters for the apriltag detection
     Args:
@@ -36,10 +36,12 @@ def train_parameters_apriltag(images_path, num_corners, save_params=False, evals
     Returns:
         optimal parameters
     '''
-    images = [cv2.imread(os.path.join(images_path, img)) for img in os.listdir(images_path) if os.path.splitext(img)[1] == '.jpg']
+    image_paths = [os.path.join(images_path, img) for img in os.listdir(images_path) if os.path.splitext(img)[1] == '.jpg']
+    images = []
     optimal_solutions = []
-    for idx, image in enumerate(images):
-        images[idx] = undistort(image)
+    for image_path in image_paths:
+        undistorted_image = undistort(image_path)
+        images.append(undistorted_image)
 
     def objective(params):
         total_loss = 0
@@ -49,7 +51,7 @@ def train_parameters_apriltag(images_path, num_corners, save_params=False, evals
             threshold, kernel_dim1, kernel_dim2, sigma1, sigma2, accuracy = int(params['threshold']), int(params['kernel_dim1']), int(params['kernel_dim2']), params['sigma1'], params['sigma2'], params['accuracy']
 
             grey_img = enhance_image(grey_img, threshold, kernel_dim1, kernel_dim2, sigma1, sigma2)
-            aruco_dict, aruco_params = configure_aruco_params(accuracy=accuracy)
+            aruco_dict, aruco_params = configure_aruco_params(tag=tag, accuracy=accuracy)
             temp_img = cv2.threshold(grey_img, threshold, 255, cv2.THRESH_BINARY)[1]
 
             (corners, _, _) = cv2.aruco.detectMarkers(temp_img, aruco_dict, parameters=aruco_params)
@@ -72,8 +74,6 @@ def train_parameters_apriltag(images_path, num_corners, save_params=False, evals
     }
 
     params = fmin(objective, space, algo=tpe.suggest, max_evals=evals)
-    if not os.path.exists('apriltags/detections/all_corners_detections'):
-        os.makedirs('apriltags/detections/all_corners_detections')
     if save_params:
         if len(optimal_solutions) > 1:
             print("Multiple perfect solutions found, saving all of them.")
@@ -89,11 +89,10 @@ def train_parameters_apriltag(images_path, num_corners, save_params=False, evals
                 print("No optimal solutions found, saving the best solution")
                 with open(os.path.join(images_path, 'optimal_solution.txt'), 'w') as f:
                     f.write(str(params) + '\n')
-            
 
     return params
 
-def detect(img, params=None):
+def detect(img, tag="APRILTAG_36h11", params=None):
     
     if params is None:
         with open('data/apriltags/multiple_test18/optimal_solutions.txt', 'r') as f:
@@ -111,11 +110,10 @@ def detect(img, params=None):
     threshold, kernel_dim1, kernel_dim2, sigma1, sigma2, accuracy = int(params['threshold']), int(params['kernel_dim1']), int(params['kernel_dim2']), params['sigma1'], params['sigma2'], params['accuracy']
 
     grey_img = enhance_image(grey_img, threshold, kernel_dim1, kernel_dim2, sigma1, sigma2)
-    aruco_dict, aruco_params = configure_aruco_params(accuracy=accuracy)
+    aruco_dict, aruco_params = configure_aruco_params(tag=tag, accuracy=accuracy)
     temp_img = cv2.threshold(grey_img, threshold, 255, cv2.THRESH_BINARY)[1]
 
     (corners, ids, rejected) = cv2.aruco.detectMarkers(temp_img, aruco_dict, parameters=aruco_params)
-    print(f"threshold: {threshold}, corners: {len(corners)}")
 
     _draw_corners(temp_img, corners, ids, foldername=f"corner_detections/{timestamp}")
 
