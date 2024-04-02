@@ -36,7 +36,7 @@ def enhance_image(img, threshold, kernel1_dim=5, kernel2_dim=3, sigma1=0, sigma2
     
     return img
 
-def undistort(img_path='data/sample_image.jpg', calib_results_folder='checkerboard_6x9_8.5', save_img=False, save_path="data/undistortion/", debug=False):
+def undistort(img_path='data/sample_image.jpg', calib_results_folder='checkerboard_6x9_2.0', save_img=False, save_path="data/undistortion/", debug=False):
     if debug:
         print("Undistorting image...")
     
