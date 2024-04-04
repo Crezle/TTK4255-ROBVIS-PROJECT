@@ -7,23 +7,23 @@ from hyperopt import fmin, tpe, hp, STATUS_OK
 import ast
 
 def _draw_corners(img, corners, ids, show_img=False, foldername="unnamed_detections"):
-    color_img = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
-    cv2.aruco.drawDetectedMarkers(color_img, corners, ids)
+    cv2.aruco.drawDetectedMarkers(img, corners, ids)
     if show_img:
-        cv2.imshow(f'image', color_img)
+        cv2.imshow(f'image', img)
         cv2.waitKey(0)
         cv2.destroyAllWindows()
     if not os.path.exists(f"data/apriltags/detections/{foldername}"):
         os.makedirs(f"data/apriltags/detections/{foldername}")
-    cv2.imwrite(f"data/apriltags/detections/{foldername}/cornerdetections.jpg", color_img)
+    cv2.imwrite(f"data/apriltags/detections/{foldername}/cornerdetections.jpg", img)
 
-def configure_aruco_params(tag="APRILTAG_36h11", accuracy=0.10):
+def configure_aruco_params(tag="APRILTAG_36h11", accuracy=None):
     if tag == "APRILTAG_36h11":
         aruco_dict = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_APRILTAG_36h11)
     else:
         raise NotImplementedError("Only APRILTAG_36h11 is supported at the moment.")
     aruco_params = cv2.aruco.DetectorParameters()
-    aruco_params.polygonalApproxAccuracyRate = accuracy
+    if accuracy is not None:
+        aruco_params.polygonalApproxAccuracyRate = accuracy
     return aruco_dict, aruco_params
 
 def train_parameters_apriltag(images_path, num_corners, tag="APRILTAG_36h11", save_params=False, evals=100):
@@ -92,29 +92,41 @@ def train_parameters_apriltag(images_path, num_corners, tag="APRILTAG_36h11", sa
 
     return params
 
-def detect(img, tag="APRILTAG_36h11", params=None):
+def detect(img, tag="APRILTAG_36h11", aug_params=None, aug_params_path=None):
     
-    if params is None:
-        with open('data/apriltags/multiple_test18/optimal_solutions.txt', 'r') as f:
-            params_str = f.read()
-            params = ast.literal_eval(params_str)
+    # if aug_params is None:
+    #     with open('data/apriltags/multiple_test18/optimal_solutions.txt', 'r') as f:
+    #         params_str = f.read()
+    #         aug_params = ast.literal_eval(params_str)
     
     timestamp = datetime.now().strftime('%d.%m.%Y_%H.%M.%S')
     
-    grey_img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     
-    # For some reason, params returns indices and not the value itself
-    kernel_dims = [3, 5, 7, 9]  # The list of possible kernel dimensions
-    params['kernel_dim1'] = kernel_dims[int(params['kernel_dim1'])]
-    params['kernel_dim2'] = kernel_dims[int(params['kernel_dim2'])]
-    threshold, kernel_dim1, kernel_dim2, sigma1, sigma2, accuracy = int(params['threshold']), int(params['kernel_dim1']), int(params['kernel_dim2']), params['sigma1'], params['sigma2'], params['accuracy']
+    if aug_params is not None or aug_params_path is not None:
+        grey_img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
-    grey_img = enhance_image(grey_img, threshold, kernel_dim1, kernel_dim2, sigma1, sigma2)
-    aruco_dict, aruco_params = configure_aruco_params(tag=tag, accuracy=accuracy)
-    temp_img = cv2.threshold(grey_img, threshold, 255, cv2.THRESH_BINARY)[1]
+        if aug_params_path is not None:
+            try:
+                with open(aug_params_path, 'r') as f:
+                    params_str = f.read()
+                    aug_params = ast.literal_eval(params_str)
+            except FileNotFoundError:
+                raise FileNotFoundError("No optimal solutions found, please run train_parameters_apriltag first.")
+        
+        # For some reason, params returns indices and not the value itself
+        kernel_dims = [3, 5, 7, 9]  # The list of possible kernel dimensions
+        aug_params['kernel_dim1'] = kernel_dims[int(aug_params['kernel_dim1'])]
+        aug_params['kernel_dim2'] = kernel_dims[int(aug_params['kernel_dim2'])]
+        threshold, kernel_dim1, kernel_dim2, sigma1, sigma2, accuracy = int(aug_params['threshold']), int(aug_params['kernel_dim1']), int(aug_params['kernel_dim2']), aug_params['sigma1'], aug_params['sigma2'], aug_params['accuracy']
 
-    (corners, ids, rejected) = cv2.aruco.detectMarkers(temp_img, aruco_dict, parameters=aruco_params)
+        grey_img = enhance_image(grey_img, threshold, kernel_dim1, kernel_dim2, sigma1, sigma2)
+        aruco_dict, aruco_params = configure_aruco_params(tag=tag, accuracy=accuracy)
+        img = cv2.threshold(grey_img, threshold, 255, cv2.THRESH_BINARY)[1]
+    else:
+        aruco_dict, aruco_params = configure_aruco_params(tag=tag)
 
-    _draw_corners(temp_img, corners, ids, foldername=f"corner_detections/{timestamp}")
+    (corners, ids, rejected) = cv2.aruco.detectMarkers(img, aruco_dict, parameters=aruco_params)
+    img = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
+    _draw_corners(img, corners, ids, foldername=f"corner_detections/{timestamp}")
 
     return corners, ids, rejected
