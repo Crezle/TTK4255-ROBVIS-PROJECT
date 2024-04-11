@@ -2,9 +2,10 @@ import cv2
 import numpy as np
 from datetime import datetime
 import os
-from image_processing import enhance_image, undistort
+from image_processing import enhance_image, undistort, is_grayscale
 from hyperopt import fmin, tpe, hp, STATUS_OK
 import ast
+import random
 
 def _draw_corners(img, corners, ids, show_img=False, foldername="unnamed_detections"):
     cv2.aruco.drawDetectedMarkers(img, corners, ids)
@@ -36,6 +37,7 @@ def train_parameters_apriltag(images_path, num_corners, tag="APRILTAG_36h11", sa
     Returns:
         optimal parameters
     '''
+    print(random.getstate())
     image_paths = [os.path.join(images_path, img) for img in os.listdir(images_path) if os.path.splitext(img)[1] == '.jpg']
     images = []
     optimal_solutions = []
@@ -48,9 +50,9 @@ def train_parameters_apriltag(images_path, num_corners, tag="APRILTAG_36h11", sa
         for img in images:
             grey_img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
-            threshold, kernel_dim1, kernel_dim2, sigma1, sigma2, accuracy = int(params['threshold']), int(params['kernel_dim1']), int(params['kernel_dim2']), params['sigma1'], params['sigma2'], params['accuracy']
+            threshold, kernel_dim, sigma, accuracy = int(params['threshold']), int(params['kernel_dim']), params['sigma'], params['accuracy']
 
-            grey_img = enhance_image(grey_img, threshold, kernel_dim1, kernel_dim2, sigma1, sigma2)
+            grey_img = enhance_image(grey_img, threshold, kernel_dim, sigma)
             aruco_dict, aruco_params = configure_aruco_params(tag=tag, accuracy=accuracy)
             temp_img = cv2.threshold(grey_img, threshold, 255, cv2.THRESH_BINARY)[1]
 
@@ -65,12 +67,10 @@ def train_parameters_apriltag(images_path, num_corners, tag="APRILTAG_36h11", sa
         return {'loss': total_loss, 'status': STATUS_OK}
     
     space = {
-        'threshold': hp.quniform('threshold', int(255*0.4), int(255*0.6), 1),
-        'kernel_dim1': hp.choice('kernel_dim1', [3, 5, 7, 9]),
-        'kernel_dim2': hp.choice('kernel_dim2', [3, 5, 7, 9]),
-        'sigma1': hp.uniform('sigma1', 0, 10),
-        'sigma2': hp.uniform('sigma2', 0, 10),
-        'accuracy': hp.uniform('accuracy', 0.01, 0.5)
+        'threshold': hp.quniform('threshold', int(255*0.5), int(255*0.8), 1),
+        'kernel_dim': hp.choice('kernel_dim', [3, 5, 7]),
+        'sigma': hp.uniform('sigma', 1, 15),
+        'accuracy': hp.uniform('accuracy', 0.01, 0.25)
     }
 
     params = fmin(objective, space, algo=tpe.suggest, max_evals=evals)
@@ -115,18 +115,21 @@ def detect(img, tag="APRILTAG_36h11", aug_params=None, aug_params_path=None):
         
         # For some reason, params returns indices and not the value itself
         kernel_dims = [3, 5, 7, 9]  # The list of possible kernel dimensions
-        aug_params['kernel_dim1'] = kernel_dims[int(aug_params['kernel_dim1'])]
-        aug_params['kernel_dim2'] = kernel_dims[int(aug_params['kernel_dim2'])]
-        threshold, kernel_dim1, kernel_dim2, sigma1, sigma2, accuracy = int(aug_params['threshold']), int(aug_params['kernel_dim1']), int(aug_params['kernel_dim2']), aug_params['sigma1'], aug_params['sigma2'], aug_params['accuracy']
+        if not aug_params['kernel_dim'] in kernel_dims:
+            # For some reason, sometimes params returns indices and not the value itself
+            aug_params['kernel_dim'] = kernel_dims[int(aug_params['kernel_dim'])]
+        threshold, kernel_dim, sigma, accuracy = int(aug_params['threshold']), int(aug_params['kernel_dim']), aug_params['sigma'], aug_params['accuracy']
 
-        grey_img = enhance_image(grey_img, threshold, kernel_dim1, kernel_dim2, sigma1, sigma2)
+        grey_img = enhance_image(grey_img, threshold, kernel_dim, sigma)
         aruco_dict, aruco_params = configure_aruco_params(tag=tag, accuracy=accuracy)
         img = cv2.threshold(grey_img, threshold, 255, cv2.THRESH_BINARY)[1]
     else:
         aruco_dict, aruco_params = configure_aruco_params(tag=tag)
 
     (corners, ids, rejected) = cv2.aruco.detectMarkers(img, aruco_dict, parameters=aruco_params)
-    img = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
+    
+    if is_grayscale(img):
+        img = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
     _draw_corners(img, corners, ids, foldername=f"corner_detections/{timestamp}")
 
     return corners, ids, rejected
