@@ -8,6 +8,7 @@ def main(args):
     calibration = args['calibration']
     undistortion = args['undistortion']
     board = args['board']
+    cars = args['cars']
 
     if not calibration['skip']:
         camera.calibrate(calibration['dataset'],
@@ -19,7 +20,7 @@ def main(args):
 
     if not undistortion['skip']:
         camera.undistort(undistortion['img_set'],
-                        undistortion['coeffs'],
+                        undistortion['calib_baseline'],
                         undistortion['crop'],
                         undistortion['save_imgs'],
                         undistortion['std_samples'])
@@ -30,15 +31,21 @@ def main(args):
                          board['markers']['downright'],
                          board['markers']['downleft']]
 
-        detection.detect_board(board['dictionary'],
-                               board['img_set'],
-                               board['img_idx'],
-                               board_corners,
-                               board['ids'],
-                               board['refind'],
-                               board['coeffs'],
-                               board['save_imgs'],
-                               board['show_rejected'])
+        R, t, _ = detection.detect_board(board['dictionary'],
+                                         board['img_set'],
+                                         board['img_idx'],
+                                         board_corners,
+                                         board['ids'],
+                                         board['refind'],
+                                         board['calib_baseline'],
+                                         board['save_imgs'],
+                                         board['show_rejected'])
+    
+    if not cars['skip']:
+        detection.detect_cars(cars['img_set'],
+                              cars['calib_baseline'],
+                              cars['show_rejected'])
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Script for running the project.', formatter_class=argparse.RawTextHelpFormatter)
