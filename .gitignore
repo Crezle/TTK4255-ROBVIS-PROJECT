@@ -1,9 +1,13 @@
 # Custom ignore
 data/calibration/failed/**
 data/calibration/results/**
-data/undistortion/**
-**/*.txt
-data/apriltags/detections/**
+data/undistortion/undistorted/**
+data/detection/old_results/**
+data/detection/results/**
+data/homography(DEPRICATED)/**
+*.txt
+
+!**/.gitkeep
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
