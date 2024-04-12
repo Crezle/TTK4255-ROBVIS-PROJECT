@@ -2,24 +2,38 @@
     "calibration": {
         "dataset": "checkerboard_6x9_2.0",
         "board_size": [6, 9],
-        "square_size": 0.02,
+        "square_size": 2,
         "rerun_detection": false,
         "save_params": true,
-        "show_results": false
+        "show_results": false,
+        "skip": true
     },
     "undistortion": {
         "img_set": "samples",
         "coeffs": "checkerboard_6x9_2.0",
         "crop": true,
         "save_imgs": true,
-        "std_samples": 1
+        "std_samples": 1,
+        "skip": true
     },
-    "aruco": {
-        "dictionary": "DICT_6X6_250",
-        "img_set": "cars_fone4+6",
-        "show_results": true,
-        "save_results": true,
+    "board": {
+        "dictionary": "DICT_APRILTAG_36h11",
+        "img_set": "homography_fone4",
+        "img_idx": 0,
+        "markers": {
+            "upleft": [[0, 0], [1, 0], [1, 1], [0, 1]],
+            "upright": [[1, 0], [2, 0], [2, 1], [1, 1]],
+            "downright": [[1, 0], [2, 0], [2, 1], [1, 1]],
+            "downleft": [[1, 0], [2, 0], [2, 1], [1, 1]]
+        },
+        "ids": [14, 19, 8, 18],
+        "refind": true,
+        "coeffs": "checkerboard_6x9_2.0",
         "save_imgs": true,
-        "std_samples": 1
+        "show_rejected": true,
+        "skip": false
+    },
+    "cars": {
+        "skip": true
     }
 }
