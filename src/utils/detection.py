@@ -14,8 +14,8 @@ def detect_board(dictionary,
                  save_imgs,
                  show_rejected):
 
-    img_path = f'data/apriltags/images/{img_set}/*.jpg'
-    out_path = f'data/apriltags/results/{img_set}'
+    img_path = f'data/detection/images/{img_set}/*.jpg'
+    out_path = f'data/detection/results/{img_set}'
     coeffs_path = f'data/calibration/results/{coeffs}'
     
     K           = np.loadtxt(os.path.join(coeffs_path, 'K.txt'))
