@@ -90,18 +90,18 @@ def calibrate(dataset,
     # Probably not necessary
     return (K, dist_coeff, std_int)
 
-def undistort(img_set, coeffs, crop, save_imgs, std_samples):
+def undistort(img_set, calib_baseline, crop, save_imgs, std_samples):
 
     img_path = f'data/undistortion/distorted/{img_set}/*.jpg'
     out_path = f'data/undistortion/results/{img_set}'
-    coeffs_path = f'data/calibration/results/{coeffs}'
+    calib_baseline_path = f'data/calibration/results/{calib_baseline}'
     
     if not os.path.exists(out_path):
         os.makedirs(out_path)
 
-    K           = np.loadtxt(join(coeffs_path, 'K.txt'))
-    dist_coeff  = np.loadtxt(join(coeffs_path, 'dist_coeff.txt'))
-    std_int     = np.loadtxt(join(coeffs_path, 'std_int.txt'))
+    K           = np.loadtxt(join(calib_baseline_path, 'K.txt'))
+    dist_coeff  = np.loadtxt(join(calib_baseline_path, 'dist_coeff.txt'))
+    std_int     = np.loadtxt(join(calib_baseline_path, 'std_int.txt'))
 
     dc_std = np.array(std_int[4:9])
 

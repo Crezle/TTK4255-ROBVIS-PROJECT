@@ -10,16 +10,16 @@ def detect_board(dictionary,
                  board_corners,
                  ids,
                  refind,
-                 coeffs,
+                 calib_baseline,
                  save_imgs,
                  show_rejected):
 
     img_path = f'data/detection/images/{img_set}/*.jpg'
     out_path = f'data/detection/results/{img_set}'
-    coeffs_path = f'data/calibration/results/{coeffs}'
+    calib_baseline_path = f'data/calibration/results/{calib_baseline}'
     
-    K           = np.loadtxt(os.path.join(coeffs_path, 'K.txt'))
-    dist_coeff  = np.loadtxt(os.path.join(coeffs_path, 'dist_coeff.txt'))
+    K           = np.loadtxt(os.path.join(calib_baseline_path, 'K.txt'))
+    dist_coeff  = np.loadtxt(os.path.join(calib_baseline_path, 'dist_coeff.txt'))
     
     aruco_params = aruco.DetectorParameters()
     
@@ -76,3 +76,45 @@ def detect_board(dictionary,
             print('No markers detected, cannot draw axes.')
             
     return R, t, num_det_markers
+
+def detect_cars(img_set, img_idx, calib_baseline, R, t):
+    # Load the image
+    img_path = f'data/detection/images/{img_set}/*.jpg'
+    images = sorted(glob.glob(img_path))
+    img = cv2.imread(images[img_idx])
+
+    # Convert the image to HSV color space
+    hsv_img = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+
+    # Define the lower and upper bounds of the orange color range
+    lower_orange = np.array([0, 50, 50])
+    upper_orange = np.array([30, 255, 255])
+
+    # Threshold the image to get the orange regions
+    mask = cv2.inRange(hsv_img, lower_orange, upper_orange)
+
+    # Find contours of the orange regions
+    contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+    # Filter contours based on area and shape
+    min_area = 1000
+    max_area = 10000
+    min_aspect_ratio = 0.5
+    max_aspect_ratio = 2.0
+    filtered_contours = []
+    for contour in contours:
+        area = cv2.contourArea(contour)
+        x, y, w, h = cv2.boundingRect(contour)
+        aspect_ratio = float(w) / h
+        if area > min_area and area < max_area and aspect_ratio > min_aspect_ratio and aspect_ratio < max_aspect_ratio:
+            filtered_contours.append(contour)
+
+    # Draw bounding boxes around the filtered contours
+    for contour in filtered_contours:
+        x, y, w, h = cv2.boundingRect(contour)
+        cv2.rectangle(img, (x, y), (x + w, y + h), (0, 255, 0), 2)
+
+    # Display the image with bounding boxes
+    cv2.imshow("Detected Cars", img)
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()

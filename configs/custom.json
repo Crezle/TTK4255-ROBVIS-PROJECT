@@ -10,7 +10,7 @@
     },
     "undistortion": {
         "img_set": "samples",
-        "coeffs": "checkerboard_6x9_2.0",
+        "calib_baseline": "checkerboard_6x9_2.0",
         "crop": true,
         "save_imgs": true,
         "std_samples": 1,
@@ -28,7 +28,7 @@
         },
         "ids": [14, 19, 8, 18],
         "refind": true,
-        "coeffs": "checkerboard_6x9_2.0",
+        "calib_baseline": "checkerboard_6x9_2.0",
         "save_imgs": true,
         "show_rejected": true,
         "skip": false
