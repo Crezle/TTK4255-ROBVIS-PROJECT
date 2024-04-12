@@ -23,7 +23,7 @@ jobs:
         uses: conda-incubator/setup-miniconda@v3
         with:
           auto-activate-base: false
-          activate-environment: ttk4255
+          activate-environment: robvis_project
           environment-file: environment.yml
 
       - name: Check Conda Environment Status
