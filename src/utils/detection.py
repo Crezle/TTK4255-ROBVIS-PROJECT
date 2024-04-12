@@ -19,7 +19,7 @@ def detect_board(dictionary,
     coeffs_path = f'data/calibration/results/{coeffs}'
     
     K           = np.loadtxt(os.path.join(coeffs_path, 'K.txt'))
-    dist_coeff  = np.loadtxt(os.path.join(coeffs_path, 'dc.txt'))
+    dist_coeff  = np.loadtxt(os.path.join(coeffs_path, 'dist_coeff.txt'))
     
     aruco_params = aruco.DetectorParameters()
     

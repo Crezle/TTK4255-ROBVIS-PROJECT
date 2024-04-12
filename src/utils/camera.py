@@ -100,7 +100,7 @@ def undistort(img_set, coeffs, crop, save_imgs, std_samples):
         os.makedirs(out_path)
 
     K           = np.loadtxt(join(coeffs_path, 'K.txt'))
-    dist_coeff  = np.loadtxt(join(coeffs_path, 'dc.txt'))
+    dist_coeff  = np.loadtxt(join(coeffs_path, 'dist_coeff.txt'))
     std_int     = np.loadtxt(join(coeffs_path, 'std_int.txt'))
 
     dc_std = np.array(std_int[4:9])
