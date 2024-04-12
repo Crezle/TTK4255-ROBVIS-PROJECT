@@ -32,7 +32,7 @@ jobs:
           conda list
 
       - name: Run Project
-        run: python src/main.py
+        run: python src/main.py --config default
 
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
@@ -40,7 +40,4 @@ jobs:
           name: Artifacts-${{ runner.os }}
           path: |
             data/calibration/failed/**
-            data/calibration/results/**
-            data/undistortion/**
-            data/apriltags/detections/**
-            data/apriltags/**/*.txt
+            data/**/results/**

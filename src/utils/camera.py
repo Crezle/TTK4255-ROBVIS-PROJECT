@@ -93,7 +93,7 @@ def calibrate(dataset,
 def undistort(img_set, coeffs, crop, save_imgs, std_samples):
 
     img_path = f'data/undistortion/distorted/{img_set}/*.jpg'
-    out_path = f'data/undistortion/undistorted/{img_set}'
+    out_path = f'data/undistortion/results/{img_set}'
     coeffs_path = f'data/calibration/results/{coeffs}'
     
     if not os.path.exists(out_path):
