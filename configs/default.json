@@ -6,7 +6,7 @@
         "rerun_detection": false,
         "save_params": true,
         "show_results": false,
-        "skip": true
+        "skip": false
     },
     "undistortion": {
         "img_set": "samples",
@@ -14,7 +14,7 @@
         "crop": true,
         "save_imgs": true,
         "std_samples": 1,
-        "skip": true
+        "skip": false
     },
     "board": {
         "dictionary": "DICT_APRILTAG_36h11",
@@ -30,7 +30,7 @@
         "refind": true,
         "coeffs": "checkerboard_6x9_2.0",
         "save_imgs": true,
-        "show_rejected": true,
+        "show_rejected": false,
         "skip": false
     },
     "cars": {
