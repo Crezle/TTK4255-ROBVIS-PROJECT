@@ -20,22 +20,21 @@ def detect_board(dictionary,
     
     K           = np.loadtxt(os.path.join(calib_baseline_path, 'K.txt'))
     dist_coeff  = np.loadtxt(os.path.join(calib_baseline_path, 'dist_coeff.txt'))
-    
+
     aruco_params = aruco.DetectorParameters()
-    
     aruco_params.cornerRefinementMethod = aruco.CORNER_REFINE_SUBPIX
     aruco_params.adaptiveThreshConstant = 10
-    
     aruco_dict = aruco.getPredefinedDictionary(getattr(aruco, dictionary))
+    detector = aruco.ArucoDetector(aruco_dict, aruco_params)
 
+    print('Intializing board detection')
     images = sorted(glob.glob(img_path))
     img = cv2.imread(images[img_idx])
-    
+
     if not os.path.exists(out_path):
         os.makedirs(out_path)
-    
+
     board_ids = np.array(ids, dtype='int32')
-    
     board_corners = np.array(board_corners, dtype='float32')
     if board_corners.shape[2] == 2:
         board_corners = np.concatenate((board_corners, np.zeros_like(board_corners[:, :, 0:1])), axis=2)
@@ -43,17 +42,24 @@ def detect_board(dictionary,
         raise ValueError('Board corners must have shape (N, 4, 2) or (N, 4, 3)')
 
     board = aruco.Board(board_corners, aruco_dict, board_ids)
-    
-    corners, ids, rejected = aruco.detectMarkers(img, aruco_dict, parameters=aruco_params)
+
+    corners, ids, rejected = detector.detectMarkers(img)
     
     if refind:
-        corners, ids, rejected, recoveredIdx = aruco.refineDetectedMarkers(img, board, corners, ids, rejected, K, dist_coeff, parameters=aruco_params)
+        print('Refining detected markers...', end='')
+        corners, ids, rejected, recoveredIdx = detector.refineDetectedMarkers(img, board, corners, ids, rejected, K, dist_coeff)
     
-    # Estimate board pose
+        if recoveredIdx is not None:
+            print(f'Recovered {len(recoveredIdx)} markers.')
+        else:
+            print('No markers recovered.')
+    
     if ids is not None:
         obj_pts, img_pts = board.matchImagePoints(corners, ids)
     
-    ok, R, t = cv2.solvePnP(obj_pts, img_pts, K, dist_coeff)
+    print('Estimating board pose...', end='')
+    ok, rvec, t = cv2.solvePnP(obj_pts, img_pts, K, dist_coeff)
+    R = cv2.Rodrigues(rvec)[0]
     
     if not ok:
         raise ValueError('Could not estimate board pose.')
@@ -71,11 +77,12 @@ def detect_board(dictionary,
         
         if num_det_markers > 0:
             out_img = cv2.drawFrameAxes(out_img, K, dist_coeff, R, t, 1)
-            cv2.imwrite(os.path.join(out_path, 'result.png'), out_img)
         else:
             print('No markers detected, cannot draw axes.')
-            
-    return R, t, num_det_markers
+        
+        cv2.imwrite(os.path.join(out_path, 'result.png'), out_img)
+
+    return R, t
 
 def detect_cars(img_set, img_idx, calib_baseline, R, t):
     # Load the image
