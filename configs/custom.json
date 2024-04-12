@@ -1,0 +1,25 @@
+{
+    "calibration": {
+        "dataset": "checkerboard_6x9_2.0",
+        "board_size": [6, 9],
+        "square_size": 0.02,
+        "rerun_detection": false,
+        "save_params": true,
+        "show_results": false
+    },
+    "undistortion": {
+        "img_set": "samples",
+        "coeffs": "checkerboard_6x9_2.0",
+        "crop": true,
+        "save_imgs": true,
+        "std_samples": 1
+    },
+    "aruco": {
+        "dictionary": "DICT_6X6_250",
+        "img_set": "cars_fone4+6",
+        "show_results": true,
+        "save_results": true,
+        "save_imgs": true,
+        "std_samples": 1
+    }
+}
