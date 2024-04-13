@@ -27,7 +27,7 @@
             "downleft": [[1, 0], [2, 0], [2, 1], [1, 1]]
         },
         "ids": [14, 19, 8, 18],
-        "refind": true,
+        "refined": true,
         "calib_baseline": "checkerboard_6x9_2.0",
         "save_imgs": true,
         "show_rejected": false,
