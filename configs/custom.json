@@ -34,6 +34,11 @@
         "skip": false
     },
     "cars": {
+        "img_set": "homography_fone4",
+        "img_idx": 0,
+        "calib_baseline": "checkerboard_6x9_2.0",
+        "save_imgs": true,
+        "show_rejected": false,
         "skip": true
     }
 }

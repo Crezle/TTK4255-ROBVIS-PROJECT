@@ -31,7 +31,7 @@ def main(args):
                          board['markers']['downright'],
                          board['markers']['downleft']]
 
-        R, t, _ = detection.detect_board(board['dictionary'],
+        R, t = detection.detect_board(board['dictionary'],
                                          board['img_set'],
                                          board['img_idx'],
                                          board_corners,
