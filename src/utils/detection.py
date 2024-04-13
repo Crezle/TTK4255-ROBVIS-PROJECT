@@ -5,6 +5,20 @@ from cv2 import aruco
 import numpy as np
 from utils import camera
 
+def detect_markers(detector, img, board, refined, K, dist_coeff):
+    corners, ids, rejected = detector.detectMarkers(img)
+    
+    if refined:
+        print('Refining detected markers...', end='')
+        corners, ids, rejected, recoveredIdx = detector.refineDetectedMarkers(img, board, corners, ids, rejected, K, dist_coeff)
+    
+        if recoveredIdx is not None:
+            print(f'Recovered {len(recoveredIdx)} markers.')
+        else:
+            print('No markers recovered.')
+    
+    return corners, ids, rejected
+
 def detect_board(dictionary,
                  img_set,
                  img_idx,
@@ -13,8 +27,7 @@ def detect_board(dictionary,
                  refined,
                  calib_baseline,
                  save_imgs,
-                 show_rejected,
-                 undistortion):
+                 save_rejected):
 
     img_path = f'data/detection/images/{img_set}/*.jpg'
     out_path = f'data/detection/results/{img_set}'
@@ -38,25 +51,37 @@ def detect_board(dictionary,
 
     board_ids = np.array(ids, dtype='int32')
     board_corners = np.array(board_corners, dtype='float32')
+
     if board_corners.shape[2] == 2:
         board_corners = np.concatenate((board_corners, np.zeros_like(board_corners[:, :, 0:1])), axis=2)
     elif board_corners.shape[2] != 3:
         raise ValueError('Board corners must have shape (N, 4, 2) or (N, 4, 3)')
 
-    #board = aruco.Board(board_corners, aruco_dict, board_ids)
-    board = aruco.GridBoard((4, 6), 3, 1, aruco_dict)
+    board = aruco.Board(board_corners, aruco_dict, board_ids)
 
-    corners, ids, rejected = detector.detectMarkers(img)
-    dist_coeff = dist_coeff * 0.9
-    
-    if refined:
-        print('Refining detected markers...', end='')
-        corners, ids, rejected, recoveredIdx = detector.refineDetectedMarkers(img, board, corners, ids, rejected, K, dist_coeff)
-    
-        if recoveredIdx is not None:
-            print(f'Recovered {len(recoveredIdx)} markers.')
-        else:
-            print('No markers recovered.')
+    corners, ids, rejected = detect_markers(detector, img, board, refined, K, dist_coeff)
+ 
+    if ids is not None:
+        best_num_ids = len(ids)
+    else:
+        best_num_ids = 0
+    temp_img = img
+    for _ in range(10):
+        # Since image is jpg format it needs to be smoothed and sharpened
+        smooth_kernel = np.ones((5, 5), np.float32) / 25
+        temp_img = cv2.filter2D(temp_img, -1, smooth_kernel)
+        sharpen_kernel = np.array([[-1, -1, -1], [-1, 9, -1], [-1, -1, -1]])
+        temp_img = cv2.filter2D(temp_img, -1, sharpen_kernel)
+        new_corners, new_ids, new_rejected = detect_markers(detector, img, board, refined, K, dist_coeff)
+        if ids is not None:
+            if len(ids) > best_num_ids:
+                corners = new_corners
+                ids = new_ids
+                rejected = new_rejected
+                img = temp_img
+                best_num_ids = len(ids)
+            elif len(ids) < best_num_ids:
+                break
     
     if ids is not None:
         obj_pts, img_pts = board.matchImagePoints(corners, ids)
@@ -65,24 +90,38 @@ def detect_board(dictionary,
         R = cv2.Rodrigues(rvec)[0]
         num_det_markers = len(obj_pts) / 4
     
-    if not ok:
-        raise ValueError('Could not estimate board pose.')
+        if not ok:
+            raise ValueError('Could not estimate board pose.')
+        else:
+            print('Board pose estimated successfully.')
     else:
-        print('Board pose estimated successfully.')
+        print('No markers detected, cannot estimate board pose.')
+        num_det_markers = 0
+        R = None
+        tvec = None
 
     if save_imgs:
+        out_img = None
+
         if ids is not None:
             out_img = aruco.drawDetectedMarkers(img, corners, ids)
             
-        if show_rejected and rejected is not None:
-            out_img = aruco.drawDetectedMarkers(out_img, rejected, borderColor=(100, 0, 255))    
+        if save_rejected and rejected is not None:
+            rej_img = aruco.drawDetectedMarkers(img, rejected, borderColor=(100, 0, 255))
+            cv2.imwrite(os.path.join(out_path, 'rejected.png'), rej_img)  
         
         if num_det_markers > 0:
             out_img = cv2.drawFrameAxes(out_img, K, dist_coeff, rvec, tvec, 5)
         else:
             print('No markers detected, cannot draw axes.')
         
-        cv2.imwrite(os.path.join(out_path, 'result.png'), out_img)
+        if out_img is not None:
+            cv2.imwrite(os.path.join(out_path, 'result.png'), out_img)
+        else:
+            print('No image to save.')
+
+    if R is None or tvec is None:
+        Warning('Board pose not estimated, returning None for R and tvec.')
 
     return R, tvec
 

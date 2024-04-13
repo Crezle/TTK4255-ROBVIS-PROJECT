@@ -18,7 +18,7 @@
     },
     "board": {
         "dictionary": "DICT_APRILTAG_36h11",
-        "img_set": "homography_fone4",
+        "img_set": "worldframe_test4",
         "img_idx": 0,
         "markers": {
             "upleft": [[0, 0], [1, 0], [1, 1], [0, 1]],
@@ -30,15 +30,15 @@
         "refined": true,
         "calib_baseline": "checkerboard_6x9_2.0",
         "save_imgs": true,
-        "show_rejected": false,
+        "save_rejected": true,
         "skip": false
     },
     "cars": {
-        "img_set": "homography_fone4",
+        "img_set": "worldframe_test4",
         "img_idx": 0,
         "calib_baseline": "checkerboard_6x9_2.0",
         "save_imgs": true,
-        "show_rejected": false,
+        "save_rejected": false,
         "skip": true
     }
 }

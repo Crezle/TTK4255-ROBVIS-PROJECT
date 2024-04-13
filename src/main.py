@@ -39,13 +39,12 @@ def main(args):
                                          board['refined'],
                                          board['calib_baseline'],
                                          board['save_imgs'],
-                                         board['show_rejected'],
-                                         undistortion)
+                                         board['save_rejected'])
     
     if not cars['skip']:
         detection.detect_cars(cars['img_set'],
                               cars['calib_baseline'],
-                              cars['show_rejected'])
+                              cars['save_rejected'])
 
 
 if __name__ == '__main__':

@@ -111,10 +111,11 @@ def undistort(img_set, calib_baseline, crop, save_imgs, std_samples):
     for img_path in tqdm(sorted(images), desc=f'Undistorting images in {img_set}'):
         
         img = cv2.imread(img_path)
+
         height, width = img.shape[:2]
         newcameramtx, roi = cv2.getOptimalNewCameraMatrix(K, dist_coeff, (width, height), 1, (width, height))
         undist_img = cv2.undistort(img, K, dist_coeff, None, newcameramtx)
-        
+
         if crop:
             x, y, w, h = roi
             undist_img = undist_img[y:y+h, x:x+w]
