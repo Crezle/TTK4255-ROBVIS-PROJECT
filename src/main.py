@@ -36,10 +36,11 @@ def main(args):
                                          board['img_idx'],
                                          board_corners,
                                          board['ids'],
-                                         board['refind'],
+                                         board['refined'],
                                          board['calib_baseline'],
                                          board['save_imgs'],
-                                         board['show_rejected'])
+                                         board['show_rejected'],
+                                         undistortion)
     
     if not cars['skip']:
         detection.detect_cars(cars['img_set'],

@@ -106,6 +106,7 @@ def undistort(img_set, calib_baseline, crop, save_imgs, std_samples):
     dc_std = np.array(std_int[4:9])
 
     images = glob.glob(img_path)
+    undist_imgs = []
     
     for img_path in tqdm(sorted(images), desc=f'Undistorting images in {img_set}'):
         
@@ -120,6 +121,7 @@ def undistort(img_set, calib_baseline, crop, save_imgs, std_samples):
         
         if save_imgs:
             cv2.imwrite(join(out_path, basename(img_path)), undist_img)
+        undist_imgs.append(undist_img)
         
         if std_samples > 0 and save_imgs:
             for i in tqdm(range(std_samples), desc='Sampling distortion coefficients'):
@@ -135,7 +137,7 @@ def undistort(img_set, calib_baseline, crop, save_imgs, std_samples):
 
     print('Undistortion complete!\n')
 
-    return undist_img
+    return undist_imgs
     
 
 def show_calibration_results(dataset):
