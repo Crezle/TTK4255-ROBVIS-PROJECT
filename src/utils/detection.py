@@ -3,14 +3,23 @@ import cv2
 import glob
 from cv2 import aruco
 import numpy as np
-from utils import camera
+from tools.termformatter import title
 
-def detect_markers(detector, img, board, refined, K, dist_coeff):
+def _detect_markers(detector: aruco.ArucoDetector, 
+                    img: np.ndarray, 
+                    board: aruco.Board, 
+                    refined: bool, 
+                    K: np.ndarray, 
+                    dist_coeff: np.ndarray):
+
     corners, ids, rejected = detector.detectMarkers(img)
     
     if refined:
         print('Refining detected markers...', end='')
-        corners, ids, rejected, recoveredIdx = detector.refineDetectedMarkers(img, board, corners, ids, rejected, K, dist_coeff)
+        if K is None or dist_coeff is None:
+            corners, ids, rejected, recoveredIdx = detector.refineDetectedMarkers(img, board, corners, ids, rejected)
+        else:
+            corners, ids, rejected, recoveredIdx = detector.refineDetectedMarkers(img, board, corners, ids, rejected, K, dist_coeff)
     
         if recoveredIdx is not None:
             print(f'Recovered {len(recoveredIdx)} markers.')
@@ -19,32 +28,69 @@ def detect_markers(detector, img, board, refined, K, dist_coeff):
     
     return corners, ids, rejected
 
-def detect_board(dictionary,
-                 img_set,
-                 img_idx,
-                 board_corners,
-                 ids,
-                 refined,
-                 calib_baseline,
-                 save_imgs,
-                 save_rejected):
+def detect_board(dictionary: str,
+                 img_set: str,
+                 img_idx: int,
+                 board_corners: list[list[float]],
+                 ids: list[int],
+                 refined: bool,
+                 calibration_dataset: str,
+                 save_imgs: bool,
+                 save_rejected: bool,
+                 save_params: bool,
+                 passthrough: bool,
+                 K: np.ndarray = None,
+                 dist_coeff: np.ndarray = None):
+    """
+    Args:
+    dictionary: The name of the ArUco dictionary to use.
+    img_set: The name of the image set to use. Must be a folder in 'data/detection/images'.
+    img_idx: The index of the image in the image set to use.
+    board_corners: The corners of the board in the image. Should be a list of 4 points, each with 2 or 3 coordinates.
+    ids: The IDs of the markers on the board.
+    refined: Whether to refine the detected markers.
+    calibration_dataset: The name of the calibration baseline to use. Must be a folder in 'data/calibration/results'.
+    save_imgs: Whether to save the resulting images.
+    save_rejected: Whether to save the rejected markers.
+    
+    Returns:
+    R: The 3x3 rotation matrix of the board.
+    t: The translation vector of the board.
+    """
+    
+    title("BOARD DETECTION")
 
     img_path = f'data/detection/images/{img_set}/*.jpg'
     out_path = f'data/detection/results/{img_set}'
-    calib_baseline_path = f'data/calibration/results/{calib_baseline}'
+    calibration_dataset_path = f'data/calibration/results/{calibration_dataset}'
 
-    K           = np.loadtxt(os.path.join(calib_baseline_path, 'K.txt'))
-    dist_coeff  = np.loadtxt(os.path.join(calib_baseline_path, 'dist_coeff.txt'))
+    if not passthrough:
+        try:
+            K           = np.loadtxt(os.path.join(calibration_dataset_path, 'K.txt'))
+            dist_coeff  = np.loadtxt(os.path.join(calibration_dataset_path, 'dist_coeff.txt'))
+        except FileNotFoundError:
+            raise FileNotFoundError(f'Could not find calibration dataset at {calibration_dataset_path}.')
 
+    dist_coeff = dist_coeff.flatten()
+    assert K.shape == (3, 3), 'K must be a 3x3 matrix.'
+    assert dist_coeff.shape == (5,), 'dist_coeff must be a 5-element vector.'
+
+    #TODO: Make this configurable
     aruco_params = aruco.DetectorParameters()
     aruco_params.cornerRefinementMethod = aruco.CORNER_REFINE_SUBPIX
     aruco_params.adaptiveThreshConstant = 10
     aruco_dict = aruco.getPredefinedDictionary(getattr(aruco, dictionary))
     detector = aruco.ArucoDetector(aruco_dict, aruco_params)
+    assert aruco_params is not None, 'Could not create ArUco parameters.'
+    assert aruco_dict is not None, 'Could not create ArUco dictionary.'
+    assert detector is not None, 'Could not create ArUco detector.'
 
     print('Intializing board detection')
-    images = camera.undistort(img_set, calib_baseline, True, False, 0)
-    img = images[img_idx]
+    images = sorted(glob.glob(img_path))
+    assert len(images) > 0, 'No images found in the specified path.'
+    assert img_idx < len(images), 'Image index out of bounds.'
+    
+    img = cv2.imread(images[img_idx])
 
     if not os.path.exists(out_path):
         os.makedirs(out_path)
@@ -53,52 +99,32 @@ def detect_board(dictionary,
     board_corners = np.array(board_corners, dtype='float32')
 
     if board_corners.shape[2] == 2:
+        print('Corners given in 2D-coordinates, adding z=0 to board corners')
         board_corners = np.concatenate((board_corners, np.zeros_like(board_corners[:, :, 0:1])), axis=2)
     elif board_corners.shape[2] != 3:
         raise ValueError('Board corners must have shape (N, 4, 2) or (N, 4, 3)')
 
     board = aruco.Board(board_corners, aruco_dict, board_ids)
 
-    corners, ids, rejected = detect_markers(detector, img, board, refined, K, dist_coeff)
- 
-    if ids is not None:
-        best_num_ids = len(ids)
-    else:
-        best_num_ids = 0
-    temp_img = img
-    for _ in range(10):
-        # Since image is jpg format it needs to be smoothed and sharpened
-        smooth_kernel = np.ones((5, 5), np.float32) / 25
-        temp_img = cv2.filter2D(temp_img, -1, smooth_kernel)
-        sharpen_kernel = np.array([[-1, -1, -1], [-1, 9, -1], [-1, -1, -1]])
-        temp_img = cv2.filter2D(temp_img, -1, sharpen_kernel)
-        new_corners, new_ids, new_rejected = detect_markers(detector, img, board, refined, K, dist_coeff)
-        if ids is not None:
-            if len(ids) > best_num_ids:
-                corners = new_corners
-                ids = new_ids
-                rejected = new_rejected
-                img = temp_img
-                best_num_ids = len(ids)
-            elif len(ids) < best_num_ids:
-                break
+    corners, ids, rejected = _detect_markers(detector, img, board, refined, K, dist_coeff)
     
     if ids is not None:
         obj_pts, img_pts = board.matchImagePoints(corners, ids)
         print('Estimating board pose...', end='')
-        ok, rvec, tvec = cv2.solvePnP(obj_pts, img_pts, K, dist_coeff)
-        R = cv2.Rodrigues(rvec)[0]
-        num_det_markers = len(obj_pts) / 4
-    
-        if not ok:
-            raise ValueError('Could not estimate board pose.')
+        try:
+            ok, rvec, tvec = cv2.solvePnP(obj_pts, img_pts, K, dist_coeff)
+        except cv2.error as e:
+            Warning('Could not estimate board pose.')
         else:
             print('Board pose estimated successfully.')
+            num_det_markers = len(obj_pts) / 4
+
     else:
         print('No markers detected, cannot estimate board pose.')
         num_det_markers = 0
-        R = None
+        rvec = None
         tvec = None
+        Warning('Board pose not estimated, returning None for R and tvec.')
 
     if save_imgs:
         out_img = None
@@ -108,61 +134,152 @@ def detect_board(dictionary,
             
         if save_rejected and rejected is not None:
             rej_img = aruco.drawDetectedMarkers(img, rejected, borderColor=(100, 0, 255))
-            cv2.imwrite(os.path.join(out_path, 'rejected.png'), rej_img)  
+            cv2.imwrite(os.path.join(out_path, 'board_rejected.png'), rej_img)  
         
         if num_det_markers > 0:
-            out_img = cv2.drawFrameAxes(out_img, K, dist_coeff, rvec, tvec, 5)
+            out_img = cv2.drawFrameAxes(out_img, K, dist_coeff, rvec, tvec, 3, 3)
         else:
             print('No markers detected, cannot draw axes.')
         
         if out_img is not None:
-            cv2.imwrite(os.path.join(out_path, 'result.png'), out_img)
+            cv2.imwrite(os.path.join(out_path, 'board_result.png'), out_img)
         else:
             print('No image to save.')
 
-    if R is None or tvec is None:
-        Warning('Board pose not estimated, returning None for R and tvec.')
-
+    # Convert rotation vector to rotation matrix
+    R = cv2.Rodrigues(rvec)[0] if rvec is not None else None
+    
+    if save_params and R is not None and tvec is not None:
+        np.savetxt(os.path.join(out_path, 'R.txt'), R)
+        np.savetxt(os.path.join(out_path, 't.txt'), tvec)
+    
+    print('Returning extrinsics0')
+    
     return R, tvec
 
-def detect_cars(img_set, img_idx, calib_baseline, R, t):
+def detect_cars(img_set: str,
+                img_idx: int,
+                calibration_dataset: str,
+                board_img_set: str,
+                num_cars: int,
+                save_imgs: bool,
+                detector_type: str,
+                passthrough: bool,
+                K: np.ndarray = None,
+                dist_coeff: np.ndarray = None,
+                R: np.ndarray = None,
+                t: np.ndarray = None):
+    """_summary_
+    This script assumes the cars are orange.
+    
+    
+    Args:
+        img_set (_type_): _description_
+        img_idx (_type_): _description_
+        calibration_dataset (_type_): _description_
+        R (_type_): _description_
+        t (_type_): _description_
+    """
+
+    title('CAR DETECTION')
+
     # Load the image
     img_path = f'data/detection/images/{img_set}/*.jpg'
+    intr_path = f'data/calibration/results/{calibration_dataset}'
+    extr_path = f'data/detection/results/{board_img_set}'
+    out_path = f'data/detection/results/{img_set}'
+    
+    if not passthrough:
+        try:
+            K           = np.loadtxt(os.path.join(intr_path, 'K.txt'))
+            dist_coeff  = np.loadtxt(os.path.join(intr_path, 'dist_coeff.txt'))
+            R           = np.loadtxt(os.path.join(extr_path, 'R.txt'))
+            t           = np.loadtxt(os.path.join(extr_path, 't.txt'))
+        except FileNotFoundError as e:
+            raise FileNotFoundError(f'File could not be found: {e}')
+
+    
     images = sorted(glob.glob(img_path))
     img = cv2.imread(images[img_idx])
 
-    # Convert the image to HSV color space
-    hsv_img = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+    dist_coeff = dist_coeff.flatten()
 
-    # Define the lower and upper bounds of the orange color range
-    lower_orange = np.array([0, 50, 50])
-    upper_orange = np.array([30, 255, 255])
+    assert K.shape == (3, 3), 'K must be a 3x3 matrix.'
+    assert dist_coeff.shape == (5,), 'dist_coeff must be a 5-element vector.'
+    assert R.shape == (3, 3), 'R must be a 3x3 matrix.'
+    assert t.shape == (3, 1), 't must be a 3-element vector.'
 
-    # Threshold the image to get the orange regions
-    mask = cv2.inRange(hsv_img, lower_orange, upper_orange)
+    print('Detecting car features...', end='')
 
-    # Find contours of the orange regions
-    contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    # Normalize image such that brightness is uniform and avoid zero division
+    epsilon = 1e-8
+    norm_img = img / (np.sum(img, axis=2, keepdims=True) + epsilon)
+    norm_img = (norm_img * 255).astype(np.uint8)
+    
+    hsv = cv2.cvtColor(norm_img, cv2.COLOR_BGR2HSV)
+    
+    lower_orange = np.array([10, 50, 50])
+    upper_orange = np.array([25, 255, 255])
 
-    # Filter contours based on area and shape
-    min_area = 1000
-    max_area = 10000
-    min_aspect_ratio = 0.5
-    max_aspect_ratio = 2.0
-    filtered_contours = []
-    for contour in contours:
-        area = cv2.contourArea(contour)
-        x, y, w, h = cv2.boundingRect(contour)
-        aspect_ratio = float(w) / h
-        if area > min_area and area < max_area and aspect_ratio > min_aspect_ratio and aspect_ratio < max_aspect_ratio:
-            filtered_contours.append(contour)
+    mask = cv2.inRange(hsv, lower_orange, upper_orange)
+    
+    res = cv2.bitwise_and(norm_img, norm_img, mask=mask)
+    
+    red = res[:, :, 2]
+    red = cv2.threshold(red, 140, 255, cv2.THRESH_BINARY)[1]
 
-    # Draw bounding boxes around the filtered contours
-    for contour in filtered_contours:
-        x, y, w, h = cv2.boundingRect(contour)
-        cv2.rectangle(img, (x, y), (x + w, y + h), (0, 255, 0), 2)
+    detector_type = detector_type.upper()
+    match detector_type:
+        case 'SIFT':
+            detector = cv2.SIFT.create()
+        case 'FAST':
+            raise NotImplementedError('FAST detector not implemented.')
+            detector = cv2.FastFeatureDetector.create()
+        case 'BRIEF':
+            raise NotImplementedError('BRIEF detector not implemented.')
+            detector = cv2.xfeatures2d.BriefDescriptorExtractor.create()
+        case 'ORB':
+            raise NotImplementedError('ORB detector not implemented.')
+            detector = cv2.ORB.create()
+        case _:
+            raise ValueError('Invalid detector specified.')
+        
+    keypoints = detector.detect(red, None)
+    keypoints = np.array(keypoints)
+    print(f'Found {len(keypoints)} keypoints.')
 
-    # Display the image with bounding boxes
-    cv2.imshow("Detected Cars", img)
-    cv2.waitKey(0)
-    cv2.destroyAllWindows()
+    kp_img = img.copy()
+    kp_img = cv2.drawKeypoints(kp_img, keypoints, kp_img, flags=cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
+    
+    sizes = np.array([kp.size for kp in keypoints])
+    
+    largest_kps = keypoints[np.argsort(sizes)]
+    
+    car_img_pos = []
+    for kp in reversed(largest_kps):
+        if any(np.linalg.norm(np.array(kp.pt) - np.array(pos)) < 10 for pos in car_img_pos):
+            continue
+
+        car_img_pos.append(kp.pt)
+
+        if len(car_img_pos) == num_cars:
+            break
+    
+    for pos in car_img_pos:
+        out_img = cv2.circle(img, tuple(map(int, pos)), 10, (0, 255, 0), -1)
+    
+    
+    out_img = cv2.resize(out_img, (0, 0), fx=0.3, fy=0.3)
+    
+    if save_imgs:
+        cv2.imwrite(os.path.join(out_path, 'kp_detection.png'), kp_img)
+        cv2.imwrite(os.path.join(out_path, 'car_detection.png'), out_img)
+    
+    # Convert to homogeneous coordinates
+    car_img_pos = np.concatenate((car_img_pos, np.ones((3, 1))), axis=1).T
+    
+    car_world_pos = (np.linalg.inv(R) @ np.linalg.inv(K) @ car_img_pos) - np.linalg.inv(R) @ t
+    
+    print(car_world_pos)
+    Warning('Suspected an ill-posed problem which causes these results to be incorrect.')
+    

@@ -5,13 +5,16 @@ import os
 from tqdm import tqdm
 from matplotlib import pyplot as plt
 from os.path import join, basename, realpath, dirname, exists, splitext
+from tools.termformatter import title
 
-def calibrate(dataset,
+def calibrate(dataset: str,
               board_size,
-              square_size,
-              rerun_detection,
-              save_params,
-              show_results):
+              square_size: float,
+              rerun_detection: bool,
+              save_params: bool,
+              show_results: bool):
+
+    title('CALIBRATION PROCESS')
 
     img_path    = f'data/calibration/images/{dataset}/*.jpg'
     out_path    = f'data/calibration/results/{dataset}'
@@ -22,6 +25,9 @@ def calibrate(dataset,
     
     if not os.path.exists(err_path):
         os.makedirs(err_path)
+        
+    width = board_size[0]
+    height = board_size[1]
 
     criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.001)
 
@@ -34,8 +40,8 @@ def calibrate(dataset,
         image_size = np.loadtxt(join(out_path, 'image_size.txt')).astype(np.int32)
         print('Using existing results.')
     else:
-        X_board = np.zeros((board_size[0]*board_size[1], 3), np.float32)
-        X_board[:,:2] = square_size*np.mgrid[0:board_size[0], 0:board_size[1]].T.reshape(-1, 2)
+        X_board = np.zeros((width*height, 3), np.float32)
+        X_board[:,:2] = square_size*np.mgrid[0:width, 0:height].T.reshape(-1, 2)
         X_all = []
         u_all = []
         image_size = None
@@ -51,7 +57,7 @@ def calibrate(dataset,
                 print('Image size mismatch, aborting.')
                 quit()
 
-            ok, u = cv2.findChessboardCorners(I, (board_size[0],board_size[1]), detect_flags)
+            ok, u = cv2.findChessboardCorners(I, (width,height), flags=detect_flags)
             if ok:
                 print(f'detected all {len(u)} checkerboard corners.')
                 X_all.append(X_board)
@@ -67,7 +73,7 @@ def calibrate(dataset,
 
     print('Calibrating. This may take a minute or two...', end='')
     results = cv2.calibrateCameraExtended(X_all, u_all, image_size, None, None)
-    print('Done!\n')
+    print('Done!0')
 
     ok, K, dist_coeff, R, t, std_int, _, _ = results
 
@@ -86,23 +92,48 @@ def calibrate(dataset,
         
     if show_results:
         show_calibration_results(dataset)
+        show_pose(img_path, width, height, square_size, u_all[0], X_all[0], K, dist_coeff)
+
+
+
 
     # Probably not necessary
-    return (K, dist_coeff, std_int)
+    return K, dist_coeff, std_int
 
-def undistort(img_set, calib_baseline, crop, save_imgs, std_samples):
+def undistort(img_set: str,
+              calibration_dataset: str,
+              crop: bool,
+              save_imgs: bool,
+              std_samples: int,
+              passthrough: bool,
+              K: np.ndarray = None,
+              dist_coeff: np.ndarray = None,
+              std_int: np.ndarray = None):
+
+    title('UNDISTORTION PROCESS')
 
     img_path = f'data/undistortion/distorted/{img_set}/*.jpg'
     out_path = f'data/undistortion/results/{img_set}'
-    calib_baseline_path = f'data/calibration/results/{calib_baseline}'
+    calibration_dataset_path = f'data/calibration/results/{calibration_dataset}'
     
     if not os.path.exists(out_path):
         os.makedirs(out_path)
 
-    K           = np.loadtxt(join(calib_baseline_path, 'K.txt'))
-    dist_coeff  = np.loadtxt(join(calib_baseline_path, 'dist_coeff.txt'))
-    std_int     = np.loadtxt(join(calib_baseline_path, 'std_int.txt'))
+    if not passthrough:
+        try:
+            K           = np.loadtxt(join(calibration_dataset_path, 'K.txt'))
+            dist_coeff  = np.loadtxt(join(calibration_dataset_path, 'dist_coeff.txt'))
+            std_int     = np.loadtxt(join(calibration_dataset_path, 'std_int.txt'))
+        except FileNotFoundError as e:
+            raise FileNotFoundError(f'Loading calibration results failed with error: {e}')
 
+    dist_coeff = dist_coeff.flatten()
+    std_int = std_int.flatten()
+
+    assert K.shape == (3, 3), 'K must be a 3x3 matrix.'
+    assert dist_coeff.shape == (5,), 'dist_coeff must be a 5-element vector.'
+    assert std_int.shape == (18,), 'std_int must be a 17-element vector.'
+    
     dc_std = np.array(std_int[4:9])
 
     images = glob.glob(img_path)
@@ -136,10 +167,7 @@ def undistort(img_set, calib_baseline, crop, save_imgs, std_samples):
                 
                 cv2.imwrite(join(out_path, basename(img_path) + f'_sampled_{i}.jpg'), undist_img_sampled)
 
-    print('Undistortion complete!\n')
-
-    return undist_imgs
-    
+    print('Undistortion complete!0')
 
 def show_calibration_results(dataset):
     folder = f'data/calibration/results/{dataset}'
@@ -198,3 +226,19 @@ def show_calibration_results(dataset):
         plt.show()
     else:
         plt.clf()
+        
+def show_pose(img_path, width, height, square_size, u, X, K, dist_coeff):
+
+    img_path = glob.glob(img_path)[0]
+    img = cv2.imread(img_path)
+    cv2.drawChessboardCorners(img, (width, height), u, True)
+    
+    ret, rvec, tvec = cv2.solvePnP(X, u, K, dist_coeff)
+
+    img = cv2.drawFrameAxes(img, K, dist_coeff, rvec, tvec, square_size, 3)
+    img = cv2.resize(img, (0, 0), fx=0.5, fy=0.5)
+    cv2.imshow('Pose', img)
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
+    
+    

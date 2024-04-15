@@ -1,44 +1,47 @@
 {
     "calibration": {
-        "dataset": "checkerboard_6x9_2.0",
-        "board_size": [6, 9],
-        "square_size": 2,
+        "dataset": "zenfone8_6x8_2.3",
+        "board_size": [8, 6],
+        "square_size": 2.3,
         "rerun_detection": false,
         "save_params": true,
         "show_results": false,
-        "skip": true
+        "skip": false
     },
     "undistortion": {
-        "img_set": "samples",
-        "calib_baseline": "checkerboard_6x9_2.0",
+        "img_set": "zenfone8_office",
+        "calibration_dataset": "zenfone8_6x8_2.3",
         "crop": true,
         "save_imgs": true,
         "std_samples": 1,
-        "skip": true
+        "skip": false
     },
     "board": {
         "dictionary": "DICT_APRILTAG_36h11",
-        "img_set": "multiple_test24",
+        "img_set": "zenfone8_cars4",
         "img_idx": 0,
         "markers": {
-            "upleft": [[0, 0], [1, 0], [1, 1], [0, 1]],
-            "upright": [[3, 0], [4, 0], [4, 1], [3, 1]],
-            "downright": [[3, 5], [4, 5], [4, 6], [3, 6]],
-            "downleft": [[0, 5], [1, 5], [1, 6], [0, 6]]
+            "upleft": [[0, 20.4], [3, 20.4], [3, 17.4], [0, 17.4]],
+            "upright": [[36, 20.4], [39, 20.4], [39, 17.4], [36, 17.4]],
+            "downright": [[36, 3], [39, 3], [39, 0], [36, 0]],
+            "downleft": [[0, 3], [3, 3], [3, 0], [0, 0]]
         },
-        "ids": [6, 23, 18, 0],
+        "ids": [2, 3, 0, 1],
         "refined": true,
-        "calib_baseline": "checkerboard_6x9_2.0",
+        "calibration_dataset": "zenfone8_6x8_2.3",
         "save_imgs": true,
-        "save_rejected": false,
+        "save_rejected": true,
+        "save_params": true,
         "skip": false
     },
     "cars": {
-        "img_set": "multiple_test24",
+        "img_set": "zenfone8_cars4",
         "img_idx": 0,
-        "calib_baseline": "checkerboard_6x9_2.0",
+        "calibration_dataset": "zenfone8_6x8_2.3",
+        "board_img_set": "zenfone8_cars4",
+        "num_cars": 3,
         "save_imgs": true,
-        "save_rejected": false,
-        "skip": true
+        "detector_type": "SIFT",
+        "skip": false
     }
 }
