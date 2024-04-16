@@ -4,6 +4,7 @@
 #include <ArduinoJson.h>
 #include <fstream>
 #include "esp_camera.h"
+#include <HTTPClient.h>
  
 const char* WIFI_SSID = "Galaxy S10e";
 const char* WIFI_PASS = "Juve51234";
@@ -19,7 +20,6 @@ int carsDirection1 = 0;
 int carsDirection2 = 0;
  
 WebServer server(80);
- 
  
 static auto loRes = esp32cam::Resolution::find(320, 240);
 static auto midRes = esp32cam::Resolution::find(800, 600);
@@ -104,27 +104,55 @@ void turnOffLights(int direction)
 
 void handeTraficLights()
 {
-  if (Serial.available() > 0) {
+HTTPClient http;
+http.setTimeout(5000);
+String url = "https://raw.githubusercontent.com/Crezle/TTK4255-ROBVIS-PROJECT/main/data/data.json";
 
-    StaticJsonDocument<200> doc;
-    DeserializationError error = deserializeJson(doc, Serial);
-    Serial.print("Received JSON: ");
-    
-    // Check for parsing errors
-    if (error) {
-      Serial.print("Parsing failed: ");
-      Serial.println(error.c_str());
-      return;
+while (true) {
+    Serial.println("URL: " + url);
+    http.begin(url);
+    int httpCode = http.GET();
+    Serial.println(httpCode);
+    DynamicJsonDocument doc(1024);
+    if (httpCode > 0) {
+        if (httpCode == HTTP_CODE_OK) {
+            String payload = http.getString();
+            Serial.println("Payload: " + payload);
+            DeserializationError error = deserializeJson(doc, payload);
+            if (error) {
+                Serial.print("Parsing failed: ");
+                Serial.println(error.c_str());
+                return;
+            }
+            carsDirection1 = doc["direction1"];
+            carsDirection2 = doc["direction2"];
+            Serial.print("Direction 1: ");
+            Serial.println(carsDirection1);
+            Serial.print("Direction 2: ");
+            Serial.println(carsDirection2);
+            break; 
+        } else if (httpCode == HTTP_CODE_MOVED_PERMANENTLY || httpCode == HTTP_CODE_FOUND) {
+            // Handle redirection
+            url = http.header("Location"); 
+            if (url.startsWith("http://") || url.startsWith("https://")) {
+                Serial.print("Redirecting to: ");
+                Serial.println(url);
+                http.end(); 
+            } else {
+                Serial.println("Invalid URL: " + url);
+                break; 
+            }
+        } else {
+            Serial.println("Error on HTTP code");
+            break; 
+        }
+    } else {
+        Serial.println("Error on HTTP request");
+        break; // Exit loop on error
     }
+}
 
-    // Extract data from JSON
-    carsDirection1 = doc["direction1"];
-    carsDirection2 = doc["direction2"];
-    Serial.print("Direction 1: ");
-    Serial.println(carsDirection1);
-    Serial.print("Direction 2: ");
-    Serial.println(carsDirection2);
-  }
+http.end();
 
  if (carsDirection1 == carsDirection2) {
     // Turn on lights for 10 seconds in one direction, then turn off
@@ -161,7 +189,7 @@ void handeTraficLights()
 }
 void handleTrafficLights(void * parameter) {
   while (true) {
-    //handeTraficLights();
+    handeTraficLights();
     delay(200000);//dummy delay
   }
 }

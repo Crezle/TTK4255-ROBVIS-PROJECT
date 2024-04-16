@@ -7,7 +7,7 @@ import time
 from pydrive.drive import GoogleDrive
 from pydrive.auth import GoogleAuth
  
-url='http://192.168.127.18/cam-hi.jpg'
+url='http://192.168.213.18/cam-hi.jpg'
 cv2.namedWindow("live transmission", cv2.WINDOW_AUTOSIZE)
  
 count=0
@@ -50,7 +50,7 @@ while True:
         print("image saved as: "+t)
         f= drive.CreateFile({'parents':[{'id':folder}],'title':t})
         f.SetContentFile(t)
-        #f.Upload()
+        f.Upload()
         print("image uploaded as: "+t)
         image = cv2.imread(t)
         height, width = image.shape[:2]
