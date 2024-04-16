@@ -4,6 +4,7 @@ import glob
 from cv2 import aruco
 import numpy as np
 from tools.termformatter import title
+import json
 
 def _detect_markers(detector: aruco.ArucoDetector, 
                     img: np.ndarray, 
@@ -38,7 +39,7 @@ def detect_board(dictionary: str,
                  save_imgs: bool,
                  save_rejected: bool,
                  save_params: bool,
-                 passthrough: bool,
+                 run_all: bool,
                  K: np.ndarray = None,
                  dist_coeff: np.ndarray = None):
     """
@@ -64,7 +65,7 @@ def detect_board(dictionary: str,
     out_path = f'data/detection/results/{img_set}'
     calibration_dataset_path = f'data/calibration/results/{calibration_dataset}'
 
-    if not passthrough:
+    if not run_all:
         try:
             K           = np.loadtxt(os.path.join(calibration_dataset_path, 'K.txt'))
             dist_coeff  = np.loadtxt(os.path.join(calibration_dataset_path, 'dist_coeff.txt'))
@@ -163,8 +164,10 @@ def detect_cars(img_set: str,
                 board_img_set: str,
                 num_cars: int,
                 save_imgs: bool,
+                red_thrsh: int,
                 detector_type: str,
-                passthrough: bool,
+                pix_thrsh: int,
+                run_all: bool,
                 K: np.ndarray = None,
                 dist_coeff: np.ndarray = None,
                 R: np.ndarray = None,
@@ -184,12 +187,12 @@ def detect_cars(img_set: str,
     title('CAR DETECTION')
 
     # Load the image
-    img_path = f'data/detection/images/{img_set}/*.jpg'
+    img_path = f'data/transformation/results/{img_set}/*.png'
     intr_path = f'data/calibration/results/{calibration_dataset}'
     extr_path = f'data/detection/results/{board_img_set}'
     out_path = f'data/detection/results/{img_set}'
     
-    if not passthrough:
+    if not run_all:
         try:
             K           = np.loadtxt(os.path.join(intr_path, 'K.txt'))
             dist_coeff  = np.loadtxt(os.path.join(intr_path, 'dist_coeff.txt'))
@@ -226,7 +229,9 @@ def detect_cars(img_set: str,
     res = cv2.bitwise_and(norm_img, norm_img, mask=mask)
     
     red = res[:, :, 2]
-    red = cv2.threshold(red, 140, 255, cv2.THRESH_BINARY)[1]
+    red = cv2.threshold(red, red_thrsh, 255, cv2.THRESH_BINARY)[1]
+    
+    cv2.imwrite(os.path.join(out_path, 'red_binary_map.png'), red)
 
     detector_type = detector_type.upper()
     match detector_type:
@@ -257,7 +262,7 @@ def detect_cars(img_set: str,
     
     car_img_pos = []
     for kp in reversed(largest_kps):
-        if any(np.linalg.norm(np.array(kp.pt) - np.array(pos)) < 10 for pos in car_img_pos):
+        if any(np.linalg.norm(np.array(kp.pt) - np.array(pos)) < pix_thrsh for pos in car_img_pos):
             continue
 
         car_img_pos.append(kp.pt)
@@ -275,11 +280,30 @@ def detect_cars(img_set: str,
         cv2.imwrite(os.path.join(out_path, 'kp_detection.png'), kp_img)
         cv2.imwrite(os.path.join(out_path, 'car_detection.png'), out_img)
     
-    # Convert to homogeneous coordinates
-    car_img_pos = np.concatenate((car_img_pos, np.ones((3, 1))), axis=1).T
-    
-    car_world_pos = (np.linalg.inv(R) @ np.linalg.inv(K) @ car_img_pos) - np.linalg.inv(R) @ t
-    
-    print(car_world_pos)
-    Warning('Suspected an ill-posed problem which causes these results to be incorrect.')
+    for idx, pos in enumerate(car_img_pos):
+        print(f'Car {idx} detected at image position {pos}.')
+        
+    print('Changing the coordinates to be given with respect to center of image...')
+
+    car_direction = {"direction1": 0,
+                     "direction2": 0,
+                     "direction3": 0,
+                     "direction4": 0}
+
+    for i in range(len(car_img_pos)):
+        car_img_pos[i] = np.array(car_img_pos[i]) - np.array([img.shape[1] / 2, img.shape[0] / 2])
+        print(f'Car {i} detected at image position {car_img_pos[i]}.')
+        if car_img_pos[i][0] > 0 and car_img_pos[i][1] < 0:
+            car_direction["direction1"] += 1
+        elif car_img_pos[i][0] < 0 and car_img_pos[i][1] < 0:
+            car_direction["direction2"] += 1
+        elif car_img_pos[i][0] < 0 and car_img_pos[i][1] > 0:
+            car_direction["direction3"] += 1
+        elif car_img_pos[i][0] > 0 and car_img_pos[i][1] > 0:
+            car_direction["direction4"] += 1
+        else:
+            print('Undetermined position')
+            
+    with open(os.path.join(out_path, 'data.json'), 'w') as f:
+        json.dump(car_direction, f, indent=4)
     

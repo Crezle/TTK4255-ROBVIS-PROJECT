@@ -16,17 +16,22 @@ Our goals consists on:
 
 ## Prerequisites
 
-For this project, the following equipments were used:
+For this project, the following equipments has been used:
 
 * Chessboard (for calibration)
-  - Size (Height/Width)  :  2.9 cm
-  - Num. squares         :  8x8 = 64
-  - Num. corners         :  7x7 = 49
+  - Size                 :  2.9 cm
+  - Num. corners (w x h) :  7x7 = 49
   - Notes                :  Has a crack from C6 to H6, in addition to it being foldable, having a crack in the middle.
 
-* Camera Device:
+* Checkerboard (on monitor)
+  - Size                 :  2.0 cm
+  - Num. corners (w x h) :  9x6 = 54
+
+* Camera Device (1):
   - Name                 :  ESP32-CAM
   - Camera               :  OV2640
+
+  - Name                 :  Zenfone8
 
 The following environment also needs to be installed to include the needed packages, this can easily be done by executing,
 

@@ -1,22 +1,25 @@
 import utils.camera as camera
 import utils.detection as detection
+import utils.transformation as transformation
 
 import argparse
 import json
 
-def main(args, passthrough):
+def main(args):
+    run_all = args['run_all']
     calibration = args['calibration']
     undistortion = args['undistortion']
     board = args['board']
     cars = args['cars']
-    
+    homography = args['homography']
+
     K = None
     dist_coeff = None
     std_int = None
     R = None
     t = None
 
-    if not calibration['skip'] or passthrough:
+    if not calibration['skip'] or run_all:
         K, dist_coeff, std_int = camera.calibrate(calibration['dataset'],
                                                   calibration['board_size'],
                                                   calibration['square_size'],
@@ -24,22 +27,25 @@ def main(args, passthrough):
                                                   calibration['save_params'],
                                                   calibration['show_results'])
 
-    if not undistortion['skip'] or passthrough:
+    if not undistortion['skip'] or run_all:
         camera.undistort(undistortion['img_set'],
                         undistortion['calibration_dataset'],
                         undistortion['crop'],
                         undistortion['save_imgs'],
                         undistortion['std_samples'],
-                        passthrough,
+                        run_all,
                         K,
                         dist_coeff,
                         std_int)
 
-    if not board['skip'] or passthrough:
+    if not board['skip'] or run_all:
         board_corners = [board['markers']['upleft'],
                          board['markers']['upright'],
                          board['markers']['downright'],
                          board['markers']['downleft']]
+        
+        board_corners = transformation.change_origin(board_corners,
+                                                    board['origin'])
 
         R, t = detection.detect_board(board['dictionary'],
                                          board['img_set'],
@@ -51,9 +57,24 @@ def main(args, passthrough):
                                          board['save_imgs'],
                                          board['save_params'],
                                          board['save_rejected'],
-                                         passthrough,
+                                         run_all,
                                          K,
                                          dist_coeff)
+        
+    if not homography['skip'] or run_all:
+        img_pts = transformation.world_to_img_corners(board_corners,
+                                                      homography['border_size'],
+                                              run_all,
+                                              R,
+                                              t,
+                                              K,
+                                              dist_coeff)
+        
+        transformation.warp_to_world(homography['img_set'],
+                                    homography['img_idx'],
+                                    img_pts,
+                                    homography['height'],
+                                    run_all)
     
     if not cars['skip']:
         detection.detect_cars(cars['img_set'],
@@ -62,8 +83,10 @@ def main(args, passthrough):
                               cars['board_img_set'],
                               cars['num_cars'],
                               cars['save_imgs'],
+                              cars['red_threshold'],
                               cars['detector_type'],
-                              passthrough,
+                              cars['min_distance'],
+                              run_all,
                               K,
                               dist_coeff,
                               R,
@@ -74,13 +97,11 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Script for running the project.',
                                      formatter_class=argparse.RawTextHelpFormatter)
     parser.add_argument('--config', type=str, default='default', help='Options: [default, custom]')
-    parser.add_argument('--passthrough', type=bool, default=True, help='Whether to keep using values from previous functions.')
     config_name = parser.parse_args().config
-    passthrough = parser.parse_args().passthrough
 
     json_path = f'configs/{config_name}.json'
 
     with open(json_path) as f:
         args = json.load(f)
 
-    main(args, passthrough)
+    main(args)

@@ -105,7 +105,7 @@ def undistort(img_set: str,
               crop: bool,
               save_imgs: bool,
               std_samples: int,
-              passthrough: bool,
+              run_all: bool,
               K: np.ndarray = None,
               dist_coeff: np.ndarray = None,
               std_int: np.ndarray = None):
@@ -119,7 +119,7 @@ def undistort(img_set: str,
     if not os.path.exists(out_path):
         os.makedirs(out_path)
 
-    if not passthrough:
+    if not run_all:
         try:
             K           = np.loadtxt(join(calibration_dataset_path, 'K.txt'))
             dist_coeff  = np.loadtxt(join(calibration_dataset_path, 'dist_coeff.txt'))
