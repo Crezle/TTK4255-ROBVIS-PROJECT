@@ -81,7 +81,7 @@ def calibrate(config: dict):
         X_board[:,:2] = square_size*np.mgrid[0:width, 0:height].T.reshape(-1, 2)
         X_all = []
         u_all = []
-        image_size 
+        image_size = None
         image_paths = glob.glob(img_path)
         for image_path in tqdm(sorted(image_paths), desc=f'Finding checkerboard corners in {dataset}'):
             print('%s...' % os.basename(image_path), end='')
