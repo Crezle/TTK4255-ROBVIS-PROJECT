@@ -7,10 +7,14 @@ from tools.termformatter import title
 def change_origin(board_corners,
                   origin):
     
+    title('CHANGING ORIGIN OF BOARD CORNERS')
+    
     board_corners = np.array(board_corners)
+    print('Current board corners: \n', board_corners)
     origin = np.array(origin)
     
     board_corners -= origin
+    print('New board corners: \n', board_corners)
     
     return board_corners
 
@@ -24,6 +28,8 @@ def world_to_img_corners(img_set,
                          t: np.ndarray = None,
                          K: np.ndarray = None,
                          dist_coeff: np.ndarray = None):
+    
+    title('IMAGE COORDINATE OF WORLD CORNERS')
     
     extrinsics_path = f'data/detection/results/{img_set}'
     intrinsics_path = f'data/calibration/results/{calib_set}'
@@ -44,12 +50,14 @@ def world_to_img_corners(img_set,
     assert K.shape == (3, 3), 'K must be a 3x3 matrix.'
     assert dist_coeff.flatten().shape == (5,), 'dist_coeff must be a 5x1 matrix.'
     
-    # Only choose corners of world
+    # Only choose outer corners of each marker and offset them by brdr_sz
     if world_corners.shape == (4, 4, 2):
+        print('Calculating corners of crop of world image...')
         world_corners = np.array([world_corners[0, 0] + np.array([-brdr_sz, brdr_sz]),
                               world_corners[1, 1] + np.array([brdr_sz, brdr_sz]),
                               world_corners[2, 2] + np.array([brdr_sz, -brdr_sz]),
                               world_corners[3, 3] + np.array([-brdr_sz, -brdr_sz])])
+        print('Image coordinate of world corners: \n', world_corners)
 
     if world_corners.shape[1] == 2:
         # Add z-coordinate
@@ -61,22 +69,26 @@ def world_to_img_corners(img_set,
     t = np.array(t, np.float32)
 
     rvec = cv2.Rodrigues(R)[0]
-    # Call cv2.projectPoints on each 2D array in world_pts
 
     img_corners = np.array([cv2.projectPoints(corner, rvec, t, K, dist_coeff)[0] for corner in world_corners]).reshape(4, 2)
     
+    if not os.path.exists(out_path):
+        os.makedirs(out_path)
+    
     if save_params:
         np.savetxt(os.path.join(out_path, 'img_pts.txt'), img_corners)
-    
 
     return img_corners
 
 def warp_to_world(img_set,
                   img_idx,
                   height,
+                  board_size,
                   save_img,
                   run_all,
                   src_pts: np.ndarray = None):
+    
+    title('PERSPECTIVE TRANSFORM WITH HOMOGRAPHY')
     
     img_path = f'data/detection/images/{img_set}/*.jpg'
     out_path = f'data/transformation/results/{img_set}'
@@ -104,12 +116,23 @@ def warp_to_world(img_set,
     
     dst_pts = np.array([[0, 0], [width, 0], [width, height], [0, height]])
 
+    print("Finding homography matrix...")
     H, _ = cv2.findHomography(src_pts, dst_pts)
+    print("Found homography matrix: \n", H)
     
     out_img = cv2.warpPerspective(img, H, (width, height))
     
     if save_img:
         cv2.imwrite(os.path.join(out_path, 'warped.png'), out_img)
 
-    return out_img
+    print("Calculating world to image units conversion matrix...")
+    fx = width / board_size[0]
+    fy = -(height / board_size[1])
+    # K2 translates pixels to world units (centimeters in this case) with y-axis pointing upwards
+    K2 = np.array([[fx, 0, 0],
+                     [0, fy, 0],
+                     [0, 0, 1]])
+    print("World to image units conversion matrix: \n", K2)
+
+    return out_img, K2
     

@@ -1,35 +1,62 @@
 {
+    "run_all": false,
     "calibration": {
+        "dataset": "esp_8x6_1.8",
+        "board_size": [8, 6],
+        "square_size": 1.8,
+        "rerun_detection": false,
+        "save_params": true,
+        "show_results": false,
         "skip": true
     },
     "undistortion": {
+        "img_set": "esp32_cars4",
+        "calibration_dataset": "esp_8x6_1.8",
+        "crop": true,
+        "save_imgs": true,
+        "std_samples": 5,
         "skip": true
     },
     "board": {
-        "img_set": "zenfone8_cars4",
-        "img_idx": 0,
+        "dictionary": "DICT_APRILTAG_36h11",
+        "img_set": "esp32_cars4",
+        "img_idx": 9,
+        "markers": {
+            "upleft": [[0, 20.4], [3, 20.4], [3, 17.4], [0, 17.4]],
+            "upright": [[36, 20.4], [39, 20.4], [39, 17.4], [36, 17.4]],
+            "downright": [[36, 3], [39, 3], [39, 0], [36, 0]],
+            "downleft": [[0, 3], [3, 3], [3, 0], [0, 0]]
+        },
+        "origin": [19.5, 10.2],
+        "ids": [2, 3, 0, 1],
         "refined": true,
-        "calibration_dataset": "zenfone8_6x8_2.3",
+        "calibration_dataset": "esp_8x6_1.8",
         "save_imgs": true,
         "save_rejected": true,
-        "save_params": true
+        "save_params": true,
+        "skip": false
     },
     "homography": {
-        "img_set": "zenfone8_cars4",
-        "calibration_dataset": "zenfone8_6x8_2.3",
-        "img_idx": 0,
+        "img_set": "esp32_cars4",
+        "calibration_dataset": "esp_8x6_1.8",
+        "img_idx": 9,
         "height": 720,
-        "border_size": 3
+        "board_size": [39, 20.4],
+        "border_size": 3,
+        "save_params": true,
+        "save_imgs": true,
+        "skip": false
     },
     "cars": {
-        "img_set": "zenfone8_cars4",
+        "warp_img_set": "esp32_cars4",
         "img_idx": 0,
-        "calibration_dataset": "zenfone8_6x8_2.3",
-        "board_img_set": "zenfone8_cars4",
+        "calibration_dataset": "esp_8x6_1.8",
+        "board_img_set": "esp32_cars4",
         "num_cars": 3,
         "save_imgs": true,
-        "red_threshold": 120,
-        "detector_type": "SIFT",
-        "min_distance": 200
+        "hsv_levels": [[0, 40, 40], [20, 90, 90]],
+        "thresholds": [0, 0, 0],
+        "min_distance": 200,
+        "skip": false
     }
 }

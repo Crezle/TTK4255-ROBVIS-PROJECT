@@ -166,11 +166,11 @@ def detect_cars(img_set: str,
                 save_imgs: bool,
                 hsv_levels: tuple[list[int]],
                 thresholds: list[int],
-                detector_type: str,
                 pix_thrsh: int,
                 run_all: bool,
                 warped_img: np.ndarray = None,
-                K: np.ndarray = None,
+                K1: np.ndarray = None,
+                K2: np.ndarray = None,
                 dist_coeff: np.ndarray = None,
                 R: np.ndarray = None,
                 t: np.ndarray = None):
@@ -196,7 +196,7 @@ def detect_cars(img_set: str,
     
     if not run_all:
         try:
-            K           = np.loadtxt(os.path.join(intr_path, 'K.txt'))
+            K1           = np.loadtxt(os.path.join(intr_path, 'K.txt'))
             dist_coeff  = np.loadtxt(os.path.join(intr_path, 'dist_coeff.txt'))
             R           = np.loadtxt(os.path.join(extr_path, 'R.txt'))
             t           = np.loadtxt(os.path.join(extr_path, 't.txt'))
@@ -208,10 +208,10 @@ def detect_cars(img_set: str,
 
     dist_coeff = dist_coeff.flatten()
 
-    assert K.shape == (3, 3), 'K must be a 3x3 matrix.'
-    assert dist_coeff.shape == (5,), 'dist_coeff must be a 5-element vector.'
+    assert K1.shape == (3, 3), 'K must be a 3x3 matrix.'
+    assert dist_coeff.flatten().shape == (5,), 'dist_coeff must be a 5-element vector.'
     assert R.shape == (3, 3), 'R must be a 3x3 matrix.'
-    assert t.shape == (3, 1), 't must be a 3-element vector.'
+    assert t.flatten().shape == (3,), 't must be a 3-element vector.'
 
     print('Detecting car features...', end='')
 
@@ -220,6 +220,8 @@ def detect_cars(img_set: str,
 
     lower = np.array(hsv_levels[0])
     upper = np.array(hsv_levels[1])
+    lower = lower * (255/100)
+    upper = upper * (255/100)
 
     mask = cv2.inRange(hsv_img, lower, upper)
     
@@ -241,22 +243,8 @@ def detect_cars(img_set: str,
     
     cv2.imwrite(os.path.join(out_path, 'binary_map.png'), binary_map)
 
-    detector_type = detector_type.upper()
-    match detector_type:
-        case 'SIFT':
-            detector = cv2.SIFT.create()
-        case 'FAST':
-            raise NotImplementedError('FAST detector not implemented.')
-            detector = cv2.FastFeatureDetector.create()
-        case 'BRIEF':
-            raise NotImplementedError('BRIEF detector not implemented.')
-            detector = cv2.xfeatures2d.BriefDescriptorExtractor.create()
-        case 'ORB':
-            raise NotImplementedError('ORB detector not implemented.')
-            detector = cv2.ORB.create()
-        case _:
-            raise ValueError('Invalid detector specified.')
-        
+    detector = cv2.SIFT.create()
+
     keypoints = detector.detect(binary_map, None)
     keypoints = np.array(keypoints)
     print(f'Found {len(keypoints)} keypoints.')
@@ -278,11 +266,9 @@ def detect_cars(img_set: str,
         if len(car_img_pos) == num_cars:
             break
     
+    out_img = warped_img
     for pos in car_img_pos:
-        out_img = cv2.circle(warped_img, tuple(map(int, pos)), 10, (0, 255, 0), -1)
-    
-    
-    out_img = cv2.resize(out_img, (0, 0), fx=0.3, fy=0.3)
+        out_img = cv2.circle(out_img, tuple(map(int, pos)), 10, (0, 255, 0), -1)
     
     if save_imgs:
         cv2.imwrite(os.path.join(out_path, 'kp_detection.png'), kp_img)
@@ -291,27 +277,30 @@ def detect_cars(img_set: str,
     for idx, pos in enumerate(car_img_pos):
         print(f'Car {idx} detected at image position {pos}.')
         
-    print('Changing the coordinates to be given with respect to center of image...')
+    print('\nChanging the coordinates to be given with respect to center of image and in world units (centimeters)...')
 
     car_direction = {"direction1": 0,
                      "direction2": 0,
                      "direction3": 0,
                      "direction4": 0}
-
+    
+    
     for i in range(len(car_img_pos)):
         car_img_pos[i] = np.array(car_img_pos[i]) - np.array([warped_img.shape[1] / 2, warped_img.shape[0] / 2])
+        car_img_pos[i] = (np.linalg.inv(K2) @ np.concatenate((car_img_pos[i].T, np.ones(1)), axis=0))[:2]
         print(f'Car {i} detected at image position {car_img_pos[i]}.')
-        if car_img_pos[i][0] > 0 and car_img_pos[i][1] < 0:
+        if car_img_pos[i][0] >= 5.5 and np.abs(car_img_pos[i][1]) <= 3.5:
             car_direction["direction1"] += 1
-        elif car_img_pos[i][0] < 0 and car_img_pos[i][1] < 0:
+        elif np.abs(car_img_pos[i][0]) <= 3.5 and car_img_pos[i][1] >= 5.5:
             car_direction["direction2"] += 1
-        elif car_img_pos[i][0] < 0 and car_img_pos[i][1] > 0:
+        elif car_img_pos[i][0] <= -5.5 and car_img_pos[i][1] <= 3.5:
             car_direction["direction3"] += 1
-        elif car_img_pos[i][0] > 0 and car_img_pos[i][1] > 0:
+        elif np.abs(car_img_pos[i][0]) <= 3.5 and car_img_pos[i][1] <= -5.5:
             car_direction["direction4"] += 1
         else:
-            print('Undetermined position')
-            
+            print(f'Car {i} at undetermined position')
+
+    print("Exporting to JSON-file...", end='')
     with open(os.path.join(out_path, 'data.json'), 'w') as f:
         json.dump(car_direction, f, indent=4)
-    
+    print("Success!")

@@ -1,6 +1,7 @@
 import utils.camera as camera
 import utils.detection as detection
 import utils.transformation as transformation
+from tools.termformatter import title
 
 import argparse
 import json
@@ -12,16 +13,18 @@ def main(args):
     board = args['board']
     homography = args['homography']
     cars = args['cars']
-    ambulance = args['ambulance']
 
-    K = None
+    K1 = None
+    K2 = None
     dist_coeff = None
     std_int = None
     R = None
     t = None
+    img_pts = None
+    warped_img = None
 
     if not calibration['skip'] or run_all:
-        K, dist_coeff, std_int = camera.calibrate(calibration['dataset'],
+        K1, dist_coeff, std_int = camera.calibrate(calibration['dataset'],
                                                   calibration['board_size'],
                                                   calibration['square_size'],
                                                   calibration['rerun_detection'],
@@ -35,7 +38,7 @@ def main(args):
                         undistortion['save_imgs'],
                         undistortion['std_samples'],
                         run_all,
-                        K,
+                        K1,
                         dist_coeff,
                         std_int)
 
@@ -61,7 +64,7 @@ def main(args):
                                          board['save_params'],
                                          board['save_rejected'],
                                          run_all,
-                                         K,
+                                         K1,
                                          dist_coeff)
         
     if not homography['skip'] or run_all:
@@ -73,18 +76,19 @@ def main(args):
                                                       run_all,
                                                       R,
                                                       t,
-                                                      K,
+                                                      K1,
                                                       dist_coeff)
         
-        warped_img = transformation.warp_to_world(homography['img_set'],
+        warped_img, K2 = transformation.warp_to_world(homography['img_set'],
                                                   homography['img_idx'],
                                                   homography['height'],
+                                                  homography['board_size'],
                                                   homography['save_imgs'],
                                                   run_all,
                                                   img_pts)
     
     if not cars['skip']:
-        detection.detect_cars(cars['img_set'],
+        detection.detect_cars(cars['warp_img_set'],
                               cars['img_idx'],
                               cars['calibration_dataset'],
                               cars['board_img_set'],
@@ -92,34 +96,16 @@ def main(args):
                               cars['save_imgs'],
                               cars['hsv_levels'],
                               cars['thresholds'],
-                              cars['detector_type'],
                               cars['min_distance'],
                               run_all,
                               warped_img,
-                              K,
+                              K1,
+                              K2,
                               dist_coeff,
                               R,
                               t)
-
-    if not ambulance['skip']:
-        detection.detect_cars(ambulance['img_set'],
-                                   ambulance['img_idx'],
-                                   ambulance['calibration_dataset'],
-                                   ambulance['board_img_set'],
-                                   ambulance['num_cars'],
-                                   ambulance['save_imgs'],
-                                   ambulance['hsv_levels'],
-                                   ambulance['thresholds'],
-                                   ambulance['detector_type'],
-                                   ambulance['min_distance'],
-                                   run_all,
-                                   warped_img,
-                                   K,
-                                   dist_coeff,
-                                   R,
-                                   t)
-
-
+    
+    title('Done!')
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Script for running the project.',
@@ -127,14 +113,11 @@ if __name__ == '__main__':
     parser.add_argument('--use_custom', type=bool, default=False, help='Choose if you want to use a custom configuration. Default is False.')
     use_custom = parser.parse_args().use_custom
 
-    with open (f'configs/default.json') as f:
-        default_config = json.load(f)
-
     if use_custom:
-        with open (f'configs/custom.json') as f:
-            custom_config = json.load(f)
-        default_config.update(custom_config)
-
-    args = default_config
+        with open(f'configs/custom.json') as f:
+            args = json.load(f)
+    else:
+        with open (f'configs/default.json') as f:
+            args = json.load(f)
 
     main(args)
