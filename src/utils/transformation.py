@@ -2,6 +2,7 @@ import cv2
 import numpy as np
 import glob
 import os
+from tools.termformatter import title
 
 def change_origin(board_corners,
                   origin):

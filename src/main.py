@@ -10,8 +10,9 @@ def main(args):
     calibration = args['calibration']
     undistortion = args['undistortion']
     board = args['board']
-    cars = args['cars']
     homography = args['homography']
+    cars = args['cars']
+    ambulance = args['ambulance']
 
     K = None
     dist_coeff = None
@@ -89,7 +90,8 @@ def main(args):
                               cars['board_img_set'],
                               cars['num_cars'],
                               cars['save_imgs'],
-                              cars['red_threshold'],
+                              cars['hsv_levels'],
+                              cars['thresholds'],
                               cars['detector_type'],
                               cars['min_distance'],
                               run_all,
@@ -99,16 +101,40 @@ def main(args):
                               R,
                               t)
 
+    if not ambulance['skip']:
+        detection.detect_cars(ambulance['img_set'],
+                                   ambulance['img_idx'],
+                                   ambulance['calibration_dataset'],
+                                   ambulance['board_img_set'],
+                                   ambulance['num_cars'],
+                                   ambulance['save_imgs'],
+                                   ambulance['hsv_levels'],
+                                   ambulance['thresholds'],
+                                   ambulance['detector_type'],
+                                   ambulance['min_distance'],
+                                   run_all,
+                                   warped_img,
+                                   K,
+                                   dist_coeff,
+                                   R,
+                                   t)
+
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Script for running the project.',
                                      formatter_class=argparse.RawTextHelpFormatter)
-    parser.add_argument('--config', type=str, default='default', help='Options: [default, custom]')
-    config_name = parser.parse_args().config
+    parser.add_argument('--use_custom', type=bool, default=False, help='Choose if you want to use a custom configuration. Default is False.')
+    use_custom = parser.parse_args().use_custom
 
-    json_path = f'configs/{config_name}.json'
+    with open (f'configs/default.json') as f:
+        default_config = json.load(f)
 
-    with open(json_path) as f:
-        args = json.load(f)
+    if use_custom:
+        with open (f'configs/custom.json') as f:
+            custom_config = json.load(f)
+        default_config.update(custom_config)
+
+    args = default_config
 
     main(args)

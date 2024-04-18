@@ -53,7 +53,21 @@
         "board_img_set": "zenfone8_cars4",
         "num_cars": 3,
         "save_imgs": true,
-        "red_threshold": 120,
+        "hsv_levels": [[10, 175, 175], [25, 255, 255]],
+        "thresholds": [0, 0, 0],
+        "detector_type": "SIFT",
+        "min_distance": 200,
+        "skip": false
+    },
+    "ambulance": {
+        "img_set": "zenfone8_cars4",
+        "img_idx": 0,
+        "calibration_dataset": "zenfone8_6x8_2.3",
+        "board_img_set": "zenfone8_cars4",
+        "num_cars": 1,
+        "save_imgs": true,
+        "hsv_levels": [[0, 175, 175], [5, 255, 255]],
+        "thresholds": [0, 0, 0],
         "detector_type": "SIFT",
         "min_distance": 200,
         "skip": false

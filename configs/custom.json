@@ -1,50 +1,25 @@
 {
-    "run_all": true,
     "calibration": {
-        "dataset": "zenfone8_6x8_2.3",
-        "board_size": [8, 6],
-        "square_size": 2.3,
-        "rerun_detection": false,
-        "save_params": true,
-        "show_results": false,
-        "skip": false
+        "skip": true
     },
     "undistortion": {
-        "img_set": "zenfone8_office",
-        "calibration_dataset": "zenfone8_6x8_2.3",
-        "crop": true,
-        "save_imgs": true,
-        "std_samples": 1,
-        "skip": false
+        "skip": true
     },
     "board": {
-        "dictionary": "DICT_APRILTAG_36h11",
         "img_set": "zenfone8_cars4",
         "img_idx": 0,
-        "markers": {
-            "upleft": [[0, 20.4], [3, 20.4], [3, 17.4], [0, 17.4]],
-            "upright": [[36, 20.4], [39, 20.4], [39, 17.4], [36, 17.4]],
-            "downright": [[36, 3], [39, 3], [39, 0], [36, 0]],
-            "downleft": [[0, 3], [3, 3], [3, 0], [0, 0]]
-        },
-        "origin": [19.5, 10.2],
-        "ids": [2, 3, 0, 1],
         "refined": true,
         "calibration_dataset": "zenfone8_6x8_2.3",
         "save_imgs": true,
         "save_rejected": true,
-        "save_params": true,
-        "skip": false
+        "save_params": true
     },
     "homography": {
         "img_set": "zenfone8_cars4",
         "calibration_dataset": "zenfone8_6x8_2.3",
         "img_idx": 0,
         "height": 720,
-        "border_size": 3,
-        "save_params": true,
-        "save_imgs": true,
-        "skip": false
+        "border_size": 3
     },
     "cars": {
         "img_set": "zenfone8_cars4",
@@ -55,7 +30,6 @@
         "save_imgs": true,
         "red_threshold": 120,
         "detector_type": "SIFT",
-        "min_distance": 200,
-        "skip": false
+        "min_distance": 200
     }
 }

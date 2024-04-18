@@ -164,7 +164,8 @@ def detect_cars(img_set: str,
                 board_img_set: str,
                 num_cars: int,
                 save_imgs: bool,
-                red_thrsh: int,
+                hsv_levels: tuple[list[int]],
+                thresholds: list[int],
                 detector_type: str,
                 pix_thrsh: int,
                 run_all: bool,
@@ -215,23 +216,30 @@ def detect_cars(img_set: str,
     print('Detecting car features...', end='')
 
     # Normalize image such that brightness is uniform and avoid zero division
-    epsilon = 1e-8
-    norm_img = warped_img / (np.sum(warped_img, axis=2, keepdims=True) + epsilon)
-    norm_img = (norm_img * 255).astype(np.uint8)
-    
-    hsv = cv2.cvtColor(norm_img, cv2.COLOR_BGR2HSV)
-    
-    lower_orange = np.array([10, 50, 50])
-    upper_orange = np.array([25, 255, 255])
+    hsv_img = cv2.cvtColor(warped_img, cv2.COLOR_BGR2HSV)
 
-    mask = cv2.inRange(hsv, lower_orange, upper_orange)
+    lower = np.array(hsv_levels[0])
+    upper = np.array(hsv_levels[1])
+
+    mask = cv2.inRange(hsv_img, lower, upper)
     
-    res = cv2.bitwise_and(norm_img, norm_img, mask=mask)
+    masked_hsv = cv2.bitwise_and(hsv_img, hsv_img, mask=mask)
     
-    red = res[:, :, 2]
-    red = cv2.threshold(red, red_thrsh, 255, cv2.THRESH_BINARY)[1]
+    bgr_img = cv2.cvtColor(masked_hsv, cv2.COLOR_HSV2BGR)
     
-    cv2.imwrite(os.path.join(out_path, 'red_binary_map.png'), red)
+    cv2.imwrite(os.path.join(out_path, 'masked_hsv.png'), bgr_img)
+    
+    red = bgr_img[:, :, 2]
+    green = bgr_img[:, :, 1]
+    blue = bgr_img[:, :, 0]
+
+    red = cv2.threshold(red, thresholds[0], 255, cv2.THRESH_BINARY)[1]
+    green = cv2.threshold(green, thresholds[1], 255, cv2.THRESH_BINARY)[1]
+    blue = cv2.threshold(blue, thresholds[2], 255, cv2.THRESH_BINARY)[1]
+    
+    binary_map = cv2.bitwise_or(cv2.bitwise_or(red, green), blue)
+    
+    cv2.imwrite(os.path.join(out_path, 'binary_map.png'), binary_map)
 
     detector_type = detector_type.upper()
     match detector_type:
@@ -249,7 +257,7 @@ def detect_cars(img_set: str,
         case _:
             raise ValueError('Invalid detector specified.')
         
-    keypoints = detector.detect(red, None)
+    keypoints = detector.detect(binary_map, None)
     keypoints = np.array(keypoints)
     print(f'Found {len(keypoints)} keypoints.')
 
