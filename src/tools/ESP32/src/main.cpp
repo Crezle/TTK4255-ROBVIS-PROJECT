@@ -18,6 +18,8 @@ const int yellowLight2 = GPIO_NUM_2;
 const int redLight2 = GPIO_NUM_4;
 int carsDirection1 = 0;
 int carsDirection2 = 0;
+int carsDirection3 = 0;
+int carsDirection4 = 0;
  
 WebServer server(80);
  
@@ -126,10 +128,14 @@ while (true) {
             }
             carsDirection1 = doc["direction1"];
             carsDirection2 = doc["direction2"];
+            carsDirection3 = doc["direction3"];
+            carsDirection4 = doc["direction4"];
             Serial.print("Direction 1: ");
             Serial.println(carsDirection1);
             Serial.print("Direction 2: ");
             Serial.println(carsDirection2);
+            carsDirection1 = carsDirection1 + carsDirection3;
+            carsDirection2 = carsDirection2 + carsDirection4;
             break; 
         } else if (httpCode == HTTP_CODE_MOVED_PERMANENTLY || httpCode == HTTP_CODE_FOUND) {
             // Handle redirection
@@ -190,7 +196,7 @@ http.end();
 void handleTrafficLights(void * parameter) {
   while (true) {
     handeTraficLights();
-    delay(200000);//dummy delay
+    //delay(200000);//dummy delay
   }
 }
 

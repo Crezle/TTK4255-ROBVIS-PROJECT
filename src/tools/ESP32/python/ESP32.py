@@ -56,19 +56,9 @@ while True:
         height, width = image.shape[:2]
         print(f'Resolution: {width}x{height}')
         
-    if key==ord('q'):
+    elif key==ord('q'):
         break
-    if key==ord('s'):
-        with open('data.json', 'r') as file:
-            json_data = file.read()
 
-        print(json_data)
-        ser = serial.Serial('/dev/ttyUSB0', 115200) 
-        
-        ser.write(json_data.encode())
-
-        print("Data sent to ESP32CAM")
-        ser.close()
     else:
         continue
  
