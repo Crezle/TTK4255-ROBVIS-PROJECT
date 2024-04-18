@@ -84,7 +84,7 @@ def calibrate(config: dict):
         image_size = None
         image_paths = glob.glob(img_path)
         for image_path in tqdm(sorted(image_paths), desc=f'Finding checkerboard corners in {dataset}'):
-            print('%s...' % os.basename(image_path), end='')
+            print('%s...' % os.path.basename(image_path), end='')
 
             I = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
 
@@ -102,11 +102,11 @@ def calibrate(config: dict):
                 u_all.append(u)
             else:
                 print(f'failed to detect checkerboard corners for image, skipping.')
-                cv2.imwrite(err_path + "/" + os.basename(image_path), I)
+                cv2.imwrite(err_path + "/" + os.path.basename(image_path), I)
 
-        np.savetxt(os.join(out_path, 'image_size.txt'), image_size)
-        np.save(os.join(out_path, 'u_all.npy'), u_all)
-        np.save(os.join(out_path, 'X_all.npy'), X_all)
+        np.savetxt(os.path.join(out_path, 'image_size.txt'), image_size)
+        np.save(os.path.join(out_path, 'u_all.npy'), u_all)
+        np.save(os.path.join(out_path, 'X_all.npy'), X_all)
 
     print('Calibrating. This may take a minute or two...', end='')
     results = cv2.calibrateCameraExtended(X_all, u_all, image_size, None, None)
