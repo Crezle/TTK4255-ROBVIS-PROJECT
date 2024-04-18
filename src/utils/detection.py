@@ -4,6 +4,7 @@ import glob
 from cv2 import aruco
 import numpy as np
 from tools.termformatter import title
+from utils.transformation import change_origin
 import json
 
 def _detect_markers(detector: aruco.ArucoDetector, 
@@ -29,35 +30,35 @@ def _detect_markers(detector: aruco.ArucoDetector,
     
     return corners, ids, rejected
 
-def detect_board(dictionary: str,
-                 img_set: str,
-                 img_idx: int,
-                 board_corners: list[list[float]],
-                 ids: list[int],
-                 refined: bool,
-                 calibration_dataset: str,
-                 save_imgs: bool,
-                 save_rejected: bool,
-                 save_params: bool,
+def detect_board(config: dict,
                  run_all: bool,
-                 K: np.ndarray = None,
-                 dist_coeff: np.ndarray = None):
-    """
-    Args:
-    dictionary: The name of the ArUco dictionary to use.
-    img_set: The name of the image set to use. Must be a folder in 'data/detection/images'.
-    img_idx: The index of the image in the image set to use.
-    board_corners: The corners of the board in the image. Should be a list of 4 points, each with 2 or 3 coordinates.
-    ids: The IDs of the markers on the board.
-    refined: Whether to refine the detected markers.
-    calibration_dataset: The name of the calibration baseline to use. Must be a folder in 'data/calibration/results'.
-    save_imgs: Whether to save the resulting images.
-    save_rejected: Whether to save the rejected markers.
+                 K: np.ndarray ,
+                 dist_coeff: np.ndarray ):
+    """Detects the board in the image and estimates the pose.
     
+    Args:
+        config (dict): Dictionary containing the configuration parameters.
+        run_all (bool): Whether to run the whole process.
+        K (np.ndarray): Camera matrix. Defaults to None.
+        dist_coeff (np.ndarray): Distortion coefficients. Defaults to None.
+
     Returns:
-    R: The 3x3 rotation matrix of the board.
-    t: The translation vector of the board.
+        R (np.ndarray | None): Rotation matrix.
+        t (np.ndarray | None): Translation vector.
     """
+    try:
+        dictionary = config['dictionary']
+        img_set = config['img_set']
+        img_idx = config['img_idx']
+        board_corners = change_origin(config)
+        ids = config['ids']
+        refined = config['refined']
+        calibration_dataset = config['calibration_dataset']
+        save_imgs = config['save_imgs']
+        save_rejected = config['save_rejected']
+        save_params = config['save_params']
+    except KeyError as e:
+        raise KeyError(f'Could not find key {e} in config.')
     
     title("BOARD DETECTION")
 
@@ -65,14 +66,26 @@ def detect_board(dictionary: str,
     out_path = f'data/detection/results/{img_set}'
     calibration_dataset_path = f'data/calibration/results/{calibration_dataset}'
 
-    if not run_all:
+    if config['skip']:
+        print('Skipping board detection, using previously saved results.')
+        try:
+            R = np.loadtxt(os.path.join(out_path, 'R.txt'))
+            t = np.loadtxt(os.path.join(out_path, 't.txt'))
+            return R, t
+        except FileNotFoundError:
+            Warning('Could not load previously saved results, returning None for R and tvec')
+            return None, None
+
+    elif not run_all:
+        print('Loading previously saved calibration parameters...')
         try:
             K           = np.loadtxt(os.path.join(calibration_dataset_path, 'K.txt'))
-            dist_coeff  = np.loadtxt(os.path.join(calibration_dataset_path, 'dist_coeff.txt'))
+            dist_coeff  = np.loadtxt(os.path.join(calibration_dataset_path, 'dist_coeff.txt')).flatten()
         except FileNotFoundError:
             raise FileNotFoundError(f'Could not find calibration dataset at {calibration_dataset_path}.')
+    else:
+        print('Using directly provided calibration parameters.')
 
-    dist_coeff = dist_coeff.flatten()
     assert K.shape == (3, 3), 'K must be a 3x3 matrix.'
     assert dist_coeff.shape == (5,), 'dist_coeff must be a 5-element vector.'
 
@@ -150,63 +163,72 @@ def detect_board(dictionary: str,
     # Convert rotation vector to rotation matrix
     R = cv2.Rodrigues(rvec)[0] if rvec is not None else None
     
+    tvec = tvec.flatten()
     if save_params and R is not None and tvec is not None:
         np.savetxt(os.path.join(out_path, 'R.txt'), R)
         np.savetxt(os.path.join(out_path, 't.txt'), tvec)
     
-    print('Returning extrinsics0')
+    print('Returning extrinsics')
     
     return R, tvec
 
-def detect_cars(img_set: str,
-                img_idx: int,
-                calibration_dataset: str,
-                board_img_set: str,
-                num_cars: int,
-                save_imgs: bool,
-                hsv_levels: tuple[list[int]],
-                thresholds: list[int],
-                pix_thrsh: int,
+def detect_cars(config: dict,
                 run_all: bool,
-                warped_img: np.ndarray = None,
-                K1: np.ndarray = None,
-                K2: np.ndarray = None,
-                dist_coeff: np.ndarray = None,
-                R: np.ndarray = None,
-                t: np.ndarray = None):
-    """_summary_
-    This script assumes the cars are orange.
-    
-    
+                warped_img: np.ndarray,
+                K1: np.ndarray,
+                K2: np.ndarray,
+                dist_coeff: np.ndarray,
+                R: np.ndarray,
+                t: np.ndarray):
+    """Detects cars in the image and exports directions to JSON-file for further processing.
+
     Args:
-        img_set (_type_): _description_
-        img_idx (_type_): _description_
-        calibration_dataset (_type_): _description_
-        R (_type_): _description_
-        t (_type_): _description_
+        config (dict): Configuration dictionary.
+        run_all (bool): Run all steps.
+        warped_img (np.ndarray): Warped image.
+        K1 (np.ndarray): Intrinsic camera matrix.
+        K2 (np.ndarray): World to image units conversion matrix.
+        dist_coeff (np.ndarray): Distortion coefficients.
+        R (np.ndarray): Rotation matrix.
+        t (np.ndarray): Translation vector.
     """
+    try:
+        img_set = config['warp_img_set']
+        img_idx = config['img_idx']
+        calibration_dataset = config['calibration_dataset']
+        board_img_set = config['board_img_set']
+        num_cars = config['num_cars']
+        save_imgs = config['save_imgs']
+        hsv_levels = config['hsv_levels']
+        thresholds = config['thresholds']
+        pix_thrsh = config['min_distance']
+    except KeyError as e:
+        raise KeyError(f'Missing key in config: {e}')
 
     title('CAR DETECTION')
 
-    # Load the image
     img_path = f'data/transformation/results/{img_set}/*.png'
     intr_path = f'data/calibration/results/{calibration_dataset}'
     extr_path = f'data/detection/results/{board_img_set}'
     out_path = f'data/detection/results/{img_set}'
     
-    if not run_all:
+    if config['skip']:
+        print('Skipping car detection')
+    elif not run_all:
+        print('Loading previously saved parameters...', end='')
         try:
-            K1           = np.loadtxt(os.path.join(intr_path, 'K.txt'))
-            dist_coeff  = np.loadtxt(os.path.join(intr_path, 'dist_coeff.txt'))
+            K1          = np.loadtxt(os.path.join(intr_path, 'K.txt'))
+            K2          = np.loadtxt(os.path.join(img_path, 'K2.txt'))
+            dist_coeff  = np.loadtxt(os.path.join(intr_path, 'dist_coeff.txt')).flatten()
             R           = np.loadtxt(os.path.join(extr_path, 'R.txt'))
-            t           = np.loadtxt(os.path.join(extr_path, 't.txt'))
+            t           = np.loadtxt(os.path.join(extr_path, 't.txt')).flatten()
             images = sorted(glob.glob(img_path))
             warped_img = cv2.imread(images[img_idx])
-            
         except FileNotFoundError as e:
             raise FileNotFoundError(f'File could not be found: {e}')
-
-    dist_coeff = dist_coeff.flatten()
+        print('Success!')
+    else:
+        print('Using directly provided parameters.')
 
     assert K1.shape == (3, 3), 'K must be a 3x3 matrix.'
     assert dist_coeff.flatten().shape == (5,), 'dist_coeff must be a 5-element vector.'
@@ -283,8 +305,7 @@ def detect_cars(img_set: str,
                      "direction2": 0,
                      "direction3": 0,
                      "direction4": 0}
-    
-    
+
     for i in range(len(car_img_pos)):
         car_img_pos[i] = np.array(car_img_pos[i]) - np.array([warped_img.shape[1] / 2, warped_img.shape[0] / 2])
         car_img_pos[i] = (np.linalg.inv(K2) @ np.concatenate((car_img_pos[i].T, np.ones(1)), axis=0))[:2]
@@ -298,9 +319,9 @@ def detect_cars(img_set: str,
         elif np.abs(car_img_pos[i][0]) <= 3.5 and car_img_pos[i][1] <= -5.5:
             car_direction["direction4"] += 1
         else:
-            print(f'Car {i} at undetermined position')
+            print(f'Car {i} at undetermined position, cannot determine direction.')
 
-    print("Exporting to JSON-file...", end='')
+    print("Exporting car directions to JSON-file...", end='')
     with open(os.path.join(out_path, 'data.json'), 'w') as f:
         json.dump(car_direction, f, indent=4)
     print("Success!")

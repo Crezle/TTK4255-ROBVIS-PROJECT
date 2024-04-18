@@ -4,31 +4,61 @@ import glob
 import os
 from tools.termformatter import title
 
-def change_origin(board_corners,
-                  origin):
+def change_origin(config: dict):
+    """Change the origin of the board corners to the specified origin.
     
+    Args:
+        config (dict): Dictionary containing the origin and markers.
+        
+    Returns:
+        np.ndarray: New board corners.
+    """
     title('CHANGING ORIGIN OF BOARD CORNERS')
-    
-    board_corners = np.array(board_corners)
+
+    board_corners = np.array([config['markers']['upleft'],
+                     config['markers']['upright'],
+                     config['markers']['downright'],
+                     config['markers']['downleft']])
+    origin = np.array(config['origin'])
+
     print('Current board corners: \n', board_corners)
-    origin = np.array(origin)
     
     board_corners -= origin
+
     print('New board corners: \n', board_corners)
     
     return board_corners
 
-def world_to_img_corners(img_set,
-                         calib_set,
-                         world_corners,
-                         brdr_sz,
-                         save_params,
-                         run_all,
-                         R: np.ndarray = None,
-                         t: np.ndarray = None,
-                         K: np.ndarray = None,
-                         dist_coeff: np.ndarray = None):
-    
+def world_to_img_corners(config: dict,
+                         board_config: dict,
+                         run_all: bool,
+                         R: np.ndarray,
+                         t: np.ndarray,
+                         K: np.ndarray,
+                         dist_coeff: np.ndarray):
+    """Convert world coordinates to image coordinates.
+
+    Args:
+        config (dict): Configuration dictionary.
+        board_config (dict): Board configuration dictionary.
+        run_all (bool): Run all steps.
+        R (np.ndarray): Rotation matrix.
+        t (np.ndarray): Translation vector.
+        K (np.ndarray): Intrinsic camera matrix.
+        dist_coeff (np.ndarray): Distortion coefficients.
+
+    Returns:
+        img_corners (np.ndarray): Image coordinates of world corners.
+    """
+    try:
+        img_set = config['img_set']
+        calib_set = config['calibration_dataset']
+        world_corners = change_origin(board_config)
+        brdr_sz = config['border_size']
+        save_params = config['save_params']
+    except KeyError as e:
+        raise KeyError(f'Missing key in config: {e}')
+
     title('IMAGE COORDINATE OF WORLD CORNERS')
     
     extrinsics_path = f'data/detection/results/{img_set}'
@@ -36,19 +66,33 @@ def world_to_img_corners(img_set,
     world_corners = np.array(world_corners, np.float32)
     out_path = f'data/transformation/results/{img_set}'
     
-    if not run_all:
+    if config['skip']:
+        print('Skipping world to image coordinate conversion, returning previous results...', end='')
+        try:
+            img_corners = np.loadtxt(os.path.join(out_path, 'src_corners.txt'))
+        except FileNotFoundError as e:
+            Warning(f'Could not load src_corners. {e}. Returning None.')
+            return None
+        print('Successful!')
+        return img_corners
+
+    elif not run_all:
+        print('Loading previously calculated extrinsics/intrinsics parameters...', end='')
         try:
             R = np.loadtxt(os.path.join(extrinsics_path, 'R.txt'))
-            t = np.loadtxt(os.path.join(extrinsics_path, 't.txt'))
+            t = np.loadtxt(os.path.join(extrinsics_path, 't.txt')).flatten()
             K = np.loadtxt(os.path.join(intrinsics_path, 'K.txt'))
-            dist_coeff = np.loadtxt(os.path.join(intrinsics_path, 'dist_coeff.txt'))
+            dist_coeff = np.loadtxt(os.path.join(intrinsics_path, 'dist_coeff.txt')).flatten()
         except FileNotFoundError as e:
             raise FileNotFoundError(f'Could not load extrinsics/intrinsics parameters. {e}')
+        print('Success!')
+    else:
+        print('Using provided extrinsics/intrinsics parameters.')
     
     assert R.shape == (3, 3), 'R must be a 3x3 matrix.'
-    assert t.flatten().shape == (3,), 't must be a 3x1 matrix.'
+    assert t.shape == (3,), 't must be a 3x1 matrix.'
     assert K.shape == (3, 3), 'K must be a 3x3 matrix.'
-    assert dist_coeff.flatten().shape == (5,), 'dist_coeff must be a 5x1 matrix.'
+    assert dist_coeff.shape == (5,), 'dist_coeff must be a 5x1 matrix.'
     
     # Only choose outer corners of each marker and offset them by brdr_sz
     if world_corners.shape == (4, 4, 2):
@@ -76,28 +120,57 @@ def world_to_img_corners(img_set,
         os.makedirs(out_path)
     
     if save_params:
-        np.savetxt(os.path.join(out_path, 'img_pts.txt'), img_corners)
+        np.savetxt(os.path.join(out_path, 'src_corners.txt'), img_corners)
 
     return img_corners
 
-def warp_to_world(img_set,
-                  img_idx,
-                  height,
-                  board_size,
-                  save_img,
-                  run_all,
-                  src_pts: np.ndarray = None):
-    
+def warp_to_world(config: dict,
+                  run_all: bool,
+                  src_pts: np.ndarray):
+    """Warp the image to world coordinates.
+
+    Args:
+        config (dict): Configuration dictionary.
+        run_all (bool): Run all steps.
+        src_pts (np.ndarray): Image coordinates of world corners.
+
+    Returns:
+        out_img (np.ndarray | None): Warped image.
+        K2 (np.ndarray | None): World to image units conversion matrix.
+    """
+    try:
+        img_set = config['img_set']
+        img_idx = config['img_idx']
+        height = config['height']
+        board_size = config['board_size']
+        save_img = config['save_imgs']
+    except KeyError as e:
+        raise KeyError(f'Missing key in config: {e}')
+
     title('PERSPECTIVE TRANSFORM WITH HOMOGRAPHY')
-    
+
     img_path = f'data/detection/images/{img_set}/*.jpg'
     out_path = f'data/transformation/results/{img_set}'
-    
-    if not run_all:
+
+    if config['skip']:
+        print('Skipping perspective transform, returning previous results...', end='')
         try:
-            src_pts = np.loadtxt(os.path.join(out_path, 'img_pts.txt'))
+            out_img = cv2.imread(os.path.join(out_path, 'warped.png'))
+            K2 = np.loadtxt(os.path.join(out_path, 'K2.txt'))
         except FileNotFoundError as e:
-            raise FileNotFoundError(f'Could not load img_pts. {e}')
+            Warning(f'Could not load warped image or K2. {e}. Returning None.')
+            return None, None
+        print('Successful!')
+
+    elif not run_all:
+        print('Loading previously calculated src_pts...', end='')
+        try:
+            src_pts = np.loadtxt(os.path.join(out_path, 'src_corners.txt'))
+        except FileNotFoundError as e:
+            raise FileNotFoundError(f'Could not load src_corners. {e}')
+        print('Success!')
+    else:
+        print('Using provided src_corners.')
 
     if not os.path.exists(out_path):
         os.makedirs(out_path)
@@ -133,6 +206,7 @@ def warp_to_world(img_set,
                      [0, fy, 0],
                      [0, 0, 1]])
     print("World to image units conversion matrix: \n", K2)
+    np.savetxt(os.path.join(out_path, 'K2.txt'), K2)
 
     return out_img, K2
     
