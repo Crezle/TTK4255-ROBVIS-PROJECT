@@ -4,6 +4,7 @@ data/calibration/results/**
 data/undistortion/results/**
 data/detection/old_results/**
 data/detection/results/**
+data/transformation/results/**
 data/homography(DEPRICATED)/**
 *.txt
 
