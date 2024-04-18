@@ -168,6 +168,7 @@ def detect_cars(img_set: str,
                 detector_type: str,
                 pix_thrsh: int,
                 run_all: bool,
+                warped_img: np.ndarray = None,
                 K: np.ndarray = None,
                 dist_coeff: np.ndarray = None,
                 R: np.ndarray = None,
@@ -198,12 +199,11 @@ def detect_cars(img_set: str,
             dist_coeff  = np.loadtxt(os.path.join(intr_path, 'dist_coeff.txt'))
             R           = np.loadtxt(os.path.join(extr_path, 'R.txt'))
             t           = np.loadtxt(os.path.join(extr_path, 't.txt'))
+            images = sorted(glob.glob(img_path))
+            warped_img = cv2.imread(images[img_idx])
+            
         except FileNotFoundError as e:
             raise FileNotFoundError(f'File could not be found: {e}')
-
-    
-    images = sorted(glob.glob(img_path))
-    img = cv2.imread(images[img_idx])
 
     dist_coeff = dist_coeff.flatten()
 
@@ -216,7 +216,7 @@ def detect_cars(img_set: str,
 
     # Normalize image such that brightness is uniform and avoid zero division
     epsilon = 1e-8
-    norm_img = img / (np.sum(img, axis=2, keepdims=True) + epsilon)
+    norm_img = warped_img / (np.sum(warped_img, axis=2, keepdims=True) + epsilon)
     norm_img = (norm_img * 255).astype(np.uint8)
     
     hsv = cv2.cvtColor(norm_img, cv2.COLOR_BGR2HSV)
@@ -253,7 +253,7 @@ def detect_cars(img_set: str,
     keypoints = np.array(keypoints)
     print(f'Found {len(keypoints)} keypoints.')
 
-    kp_img = img.copy()
+    kp_img = warped_img.copy()
     kp_img = cv2.drawKeypoints(kp_img, keypoints, kp_img, flags=cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
     
     sizes = np.array([kp.size for kp in keypoints])
@@ -271,7 +271,7 @@ def detect_cars(img_set: str,
             break
     
     for pos in car_img_pos:
-        out_img = cv2.circle(img, tuple(map(int, pos)), 10, (0, 255, 0), -1)
+        out_img = cv2.circle(warped_img, tuple(map(int, pos)), 10, (0, 255, 0), -1)
     
     
     out_img = cv2.resize(out_img, (0, 0), fx=0.3, fy=0.3)
@@ -291,7 +291,7 @@ def detect_cars(img_set: str,
                      "direction4": 0}
 
     for i in range(len(car_img_pos)):
-        car_img_pos[i] = np.array(car_img_pos[i]) - np.array([img.shape[1] / 2, img.shape[0] / 2])
+        car_img_pos[i] = np.array(car_img_pos[i]) - np.array([warped_img.shape[1] / 2, warped_img.shape[0] / 2])
         print(f'Car {i} detected at image position {car_img_pos[i]}.')
         if car_img_pos[i][0] > 0 and car_img_pos[i][1] < 0:
             car_direction["direction1"] += 1

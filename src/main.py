@@ -38,14 +38,16 @@ def main(args):
                         dist_coeff,
                         std_int)
 
-    if not board['skip'] or run_all:
-        board_corners = [board['markers']['upleft'],
+    board_corners = [board['markers']['upleft'],
                          board['markers']['upright'],
                          board['markers']['downright'],
                          board['markers']['downleft']]
         
-        board_corners = transformation.change_origin(board_corners,
-                                                    board['origin'])
+    board_corners = transformation.change_origin(board_corners,
+                                                 board['origin'])
+
+    if not board['skip'] or run_all:
+        
 
         R, t = detection.detect_board(board['dictionary'],
                                          board['img_set'],
@@ -62,19 +64,23 @@ def main(args):
                                          dist_coeff)
         
     if not homography['skip'] or run_all:
-        img_pts = transformation.world_to_img_corners(board_corners,
+        img_pts = transformation.world_to_img_corners(homography['img_set'],
+                                                      homography['calibration_dataset'],
+                                                      board_corners,
                                                       homography['border_size'],
-                                              run_all,
-                                              R,
-                                              t,
-                                              K,
-                                              dist_coeff)
+                                                      homography['save_params'],
+                                                      run_all,
+                                                      R,
+                                                      t,
+                                                      K,
+                                                      dist_coeff)
         
-        transformation.warp_to_world(homography['img_set'],
-                                    homography['img_idx'],
-                                    img_pts,
-                                    homography['height'],
-                                    run_all)
+        warped_img = transformation.warp_to_world(homography['img_set'],
+                                                  homography['img_idx'],
+                                                  homography['height'],
+                                                  homography['save_imgs'],
+                                                  run_all,
+                                                  img_pts)
     
     if not cars['skip']:
         detection.detect_cars(cars['img_set'],
@@ -87,6 +93,7 @@ def main(args):
                               cars['detector_type'],
                               cars['min_distance'],
                               run_all,
+                              warped_img,
                               K,
                               dist_coeff,
                               R,

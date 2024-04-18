@@ -38,9 +38,12 @@
     },
     "homography": {
         "img_set": "zenfone8_cars4",
+        "calibration_dataset": "zenfone8_6x8_2.3",
         "img_idx": 0,
         "height": 720,
         "border_size": 3,
+        "save_params": true,
+        "save_imgs": true,
         "skip": false
     },
     "cars": {
