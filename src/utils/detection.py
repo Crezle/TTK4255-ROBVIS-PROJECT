@@ -216,20 +216,6 @@ def detect_cars(config: dict,
     dist_coeff = intr_params['dist_coeff']
     images = sorted(glob.glob(warped_img_path))
     warped_img = cv2.imread(images[img_idx])
-    
-    # print('Success!')
-    # try:
-    #     K1          = np.loadtxt(os.path.join(intr_path, 'K.txt'))
-    #     K2          = np.loadtxt(os.path.join(transf_path, 'K2.txt'))
-    #     dist_coeff  = np.loadtxt(os.path.join(intr_path, 'dist_coeff.txt')).flatten()
-    #     R           = np.loadtxt(os.path.join(extr_path, 'R.txt'))
-    #     t           = np.loadtxt(os.path.join(extr_path, 't.txt')).flatten()
-    #     images = sorted(glob.glob(warped_img_path))
-    #     warped_img = cv2.imread(images[img_idx])
-    # except FileNotFoundError as e:
-    #     raise FileNotFoundError(f'File could not be found: {e}')
-    
-
 
     assert K1.shape == (3, 3), 'K must be a 3x3 matrix.'
     assert dist_coeff.flatten().shape == (5,), 'dist_coeff must be a 5-element vector.'
@@ -261,12 +247,10 @@ def detect_cars(config: dict,
     blue = cv2.threshold(blue, thresholds[2], 255, cv2.THRESH_BINARY)[1]
     
     binary_map = cv2.bitwise_or(cv2.bitwise_or(red, green), blue)
-    
-    
 
     detector = cv2.SIFT.create()
 
-    keypoints = detector.detect(binary_map, None)
+    keypoints = detector.detect(bgr_img, binary_map)
     keypoints = np.array(keypoints)
     print(f'Found {len(keypoints)} keypoints.')
 
@@ -295,6 +279,9 @@ def detect_cars(config: dict,
     
     cv2.imwrite(os.path.join(out_path, 'masked_hsv.png'), bgr_img)
     cv2.imwrite(os.path.join(out_path, 'binary_map.png'), binary_map)
+    cv2.imwrite(os.path.join(out_path, 'binary_map_red.png'), red)
+    cv2.imwrite(os.path.join(out_path, 'binary_map_blue.png'), green)
+    cv2.imwrite(os.path.join(out_path, 'binary_map_green.png'), blue)
     cv2.imwrite(os.path.join(out_path, 'kp_detection.png'), kp_img)
     cv2.imwrite(os.path.join(out_path, 'car_detection.png'), out_img)
 

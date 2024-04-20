@@ -23,6 +23,8 @@ def _show_pose(img_path, width, height, square_size, u, X, K, dist_coeff):
 def calibrate(config: dict,
               output_dir: str):
     """Calibrate the camera using a checkerboard pattern.
+    The code was inspired and strongly influenced by the OpenCV tutorial on camera calibration
+    and assignments from the course.
 
     Args:
         config (dict): Configuration dictionary.

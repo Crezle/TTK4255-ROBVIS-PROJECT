@@ -48,7 +48,7 @@
         "num_cars": 3,
         "hsv_levels": [[0, 40, 40], [20, 90, 90]],
         "thresholds": [0, 0, 0],
-        "min_distance": 200,
+        "min_distance": 150,
         "skip": false
     }
 }

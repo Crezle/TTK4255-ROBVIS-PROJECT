@@ -144,7 +144,8 @@ def perspective(config: dict,
 
     img_path = glob.glob(img_path)[img_idx]
     img = cv2.imread(img_path)
-    aspect_ratio = img.shape[1] / img.shape[0]
+    # Calculate aspect ratio to match with board size
+    aspect_ratio = board_size[0] / board_size[1]
     width = int(aspect_ratio * height)
     src_pts = np.array(src_pts)
     
