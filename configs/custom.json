@@ -1,21 +1,18 @@
 {
-    "run_all": false,
     "calibration": {
         "dataset": "esp_8x6_1.8",
         "board_size": [8, 6],
         "square_size": 1.8,
         "rerun_detection": false,
-        "save_params": true,
         "show_results": false,
-        "skip": true
+        "skip": false
     },
     "undistortion": {
         "img_set": "esp32_cars4",
         "calibration_dataset": "esp_8x6_1.8",
         "crop": true,
-        "save_imgs": true,
         "std_samples": 5,
-        "skip": true
+        "skip": false
     },
     "board": {
         "dictionary": "DICT_APRILTAG_36h11",
@@ -31,9 +28,7 @@
         "ids": [2, 3, 0, 1],
         "refined": true,
         "calibration_dataset": "esp_8x6_1.8",
-        "save_imgs": true,
         "save_rejected": true,
-        "save_params": true,
         "skip": false
     },
     "homography": {
@@ -43,8 +38,6 @@
         "height": 720,
         "board_size": [39, 20.4],
         "border_size": 3,
-        "save_params": true,
-        "save_imgs": true,
         "skip": false
     },
     "cars": {
@@ -53,7 +46,6 @@
         "calibration_dataset": "esp_8x6_1.8",
         "board_img_set": "esp32_cars4",
         "num_cars": 3,
-        "save_imgs": true,
         "hsv_levels": [[0, 40, 40], [20, 90, 90]],
         "thresholds": [0, 0, 0],
         "min_distance": 200,

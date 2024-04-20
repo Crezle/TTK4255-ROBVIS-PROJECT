@@ -1,14 +1,5 @@
 # Custom ignore
-data/calibration/failed/**
-data/calibration/results/**
-data/undistortion/results/**
-data/detection/old_results/**
-data/detection/results/**
-data/transformation/results/**
-data/homography(DEPRICATED)/**
-*.txt
-
-!**/.gitkeep
+output/**
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
