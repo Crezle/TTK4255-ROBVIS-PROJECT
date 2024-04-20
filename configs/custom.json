@@ -42,7 +42,6 @@
     },
     "cars": {
         "warp_img_set": "esp32_cars4",
-        "img_idx": 0,
         "calibration_dataset": "esp_8x6_1.8",
         "board_img_set": "esp32_cars4",
         "num_cars": 3,
