@@ -4,6 +4,7 @@ import glob
 import os
 from tqdm import tqdm
 from tools.termformatter import title
+from tools.dataloader import load_parameters
 
 def _show_pose(img_path, width, height, square_size, u, X, K, dist_coeff):
 
@@ -19,7 +20,8 @@ def _show_pose(img_path, width, height, square_size, u, X, K, dist_coeff):
     cv2.waitKey(0)
     cv2.destroyAllWindows()
 
-def calibrate(config: dict):
+def calibrate(config: dict,
+              output_dir: str):
     """Calibrate the camera using a checkerboard pattern.
 
     Args:
@@ -35,16 +37,15 @@ def calibrate(config: dict):
         board_size = config['board_size']
         square_size = config['square_size']
         rerun_detection = config['rerun_detection']
-        save_params = config['save_params']
         show_results = config['show_results']
     except KeyError as e:
         raise KeyError(f'Missing key in config: {e}')
 
     title('CALIBRATION PROCESS')
-            
-    img_path    = f'data/calibration/images/{dataset}/*.jpg'
-    out_path    = f'data/calibration/results/{dataset}'
-    err_path    = f'data/calibration/failed/{dataset}'
+
+    data_path   = os.path.join('data', 'calibration', dataset, '*.jpg')
+    out_path    = os.path.join(output_dir, 'calibration', dataset)
+    fail_path    = os.path.join(output_dir, 'calibration', 'failed', dataset)
     
     if config['skip']:
         print('Skipping calibration, returning previous results.')
@@ -65,11 +66,8 @@ def calibrate(config: dict):
 
     detect_flags = cv2.CALIB_CB_ADAPTIVE_THRESH + cv2.CALIB_CB_NORMALIZE_IMAGE + cv2.CALIB_CB_FAST_CHECK
 
-    if not os.path.exists(out_path):
-        os.makedirs(out_path)
-    
-    if not os.path.exists(err_path):
-        os.makedirs(err_path)
+    os.makedirs(out_path)
+    os.makedirs(fail_path)
 
     if os.path.exists(os.path.join(out_path, 'u_all.npy')) and not rerun_detection:
         u_all = np.load(os.path.join(out_path, 'u_all.npy'))
@@ -82,7 +80,7 @@ def calibrate(config: dict):
         X_all = []
         u_all = []
         image_size = None
-        image_paths = glob.glob(img_path)
+        image_paths = glob.glob(data_path)
         for image_path in tqdm(sorted(image_paths), desc=f'Finding checkerboard corners in {dataset}'):
             print('%s...' % os.path.basename(image_path), end='')
 
@@ -102,7 +100,7 @@ def calibrate(config: dict):
                 u_all.append(u)
             else:
                 print(f'failed to detect checkerboard corners for image, skipping.')
-                cv2.imwrite(err_path + "/" + os.path.basename(image_path), I)
+                cv2.imwrite(fail_path + "/" + os.path.basename(image_path), I)
 
         np.savetxt(os.path.join(out_path, 'image_size.txt'), image_size)
         np.save(os.path.join(out_path, 'u_all.npy'), u_all)
@@ -116,60 +114,52 @@ def calibrate(config: dict):
     dist_coeff = dist_coeff.flatten()
     std_int = std_int.flatten()
 
-    if save_params:
-        np.savetxt(os.path.join(out_path, 'K.txt'), K)
-        np.savetxt(os.path.join(out_path, 'dist_coeff.txt'), dist_coeff)
-        np.savetxt(os.path.join(out_path, 'std_int.txt'), std_int)
+    np.savetxt(os.path.join(out_path, 'K.txt'), K)
+    np.savetxt(os.path.join(out_path, 'dist_coeff.txt'), dist_coeff)
+    np.savetxt(os.path.join(out_path, 'std_int.txt'), std_int)
         
     if show_results:
-        _show_pose(img_path, width, height, square_size, u_all[0], X_all[0], K, dist_coeff)
-
-    return K, dist_coeff, std_int
+        _show_pose(data_path, width, height, square_size, u_all[0], X_all[0], K, dist_coeff)
 
 def undistort(config: dict,
-              run_all: bool,
-              K: np.ndarray,
-              dist_coeff: np.ndarray,
-              std_int: np.ndarray):
+              output_dir: str):
     """Undistort images using the camera calibration results.
 
     Args:
         config (dict): Configuration dictionary.
-        run_all (bool): Indicator to use values from this run or from previous runs.
-        K (np.ndarray, optional): Intrinsic camera matrix. Defaults to None.
-        dist_coeff (np.ndarray, optional): Distortion coefficients. Defaults to None.
-        std_int (np.ndarray, optional): Standard deviation of intrinsic parameters. Defaults to None.
+        output_dir (str): Output directory.
     """
     try:
         img_set = config['img_set']
-        calibration_dataset = config['calibration_dataset']
+        calib_dataset = config['calibration_dataset']
         crop = config['crop']
-        save_imgs = config['save_imgs']
         std_samples = config['std_samples']
     except KeyError as e:
         raise KeyError(f'Missing key in config: {e}')
 
-    title('UNDISTORTION PROCESS')
-
-    img_path = f'data/undistortion/distorted/{img_set}/*.jpg'
-    out_path = f'data/undistortion/results/{img_set}'
-    calibration_dataset_path = f'data/calibration/results/{calibration_dataset}'
-    
     if config['skip']:
-        print('Skipping undistortion.')
+        title('UNDISTORTION PROCESS SKIPPED')
         return
 
-    elif not run_all:
-        print('Loading calibration results...', end='')
-        try:
-            K           = np.loadtxt(os.join(calibration_dataset_path, 'K.txt'))
-            dist_coeff  = np.loadtxt(os.join(calibration_dataset_path, 'dist_coeff.txt')).flatten()
-            std_int     = np.loadtxt(os.join(calibration_dataset_path, 'std_int.txt')).flatten()
-        except FileNotFoundError as e:
-            raise FileNotFoundError(f'Loading calibration results failed with error: {e}')
-        print('Success!')
-    else:
-        print('Using current calibration results.')
+    title('UNDISTORTION PROCESS')
+
+    data_path = os.path.join('data', 'distorted', img_set, '*.jpg')
+    out_path = os.path.join(output_dir, 'undistorted', img_set)
+    calib_path = os.path.join(output_dir, 'calibration', calib_dataset)
+
+    print('Loading calibration parameters...')
+    try:
+        params = load_parameters(calib_path,
+                                'calibration',
+                                calib_dataset,
+                                ['K', 'dist_coeff', 'std_int'])
+    except FileNotFoundError as e:
+        raise FileNotFoundError(f'Could not load calibration parameters. {e}')
+    print('...success!\n')
+
+    K = params['K']
+    dist_coeff = params['dist_coeff']
+    std_int = params['std_int']
 
     assert K.shape == (3, 3), 'K must be a 3x3 matrix.'
     assert dist_coeff.shape == (5,), 'dist_coeff must be a 5-element vector.'
@@ -177,12 +167,15 @@ def undistort(config: dict,
     
     dc_std = np.array(std_int[4:9])
 
-    images = glob.glob(img_path)
+    images = glob.glob(data_path)
     undist_imgs = []
     
-    for img_path in tqdm(sorted(images), desc=f'Undistorting images in {img_set}'):
+    os.makedirs(os.path.join(out_path, 'estimate'))
+    os.makedirs(os.path.join(out_path, 'sampled'))
+    
+    for data_path in tqdm(sorted(images), desc=f'Undistorting images in {img_set}'):
         
-        img = cv2.imread(img_path)
+        img = cv2.imread(data_path)
 
         height, width = img.shape[:2]
         newcameramtx, roi = cv2.getOptimalNewCameraMatrix(K, dist_coeff, (width, height), 1, (width, height))
@@ -191,14 +184,11 @@ def undistort(config: dict,
         if crop:
             x, y, w, h = roi
             undist_img = undist_img[y:y+h, x:x+w]
-        
-        if save_imgs:
-            if not os.path.exists(out_path):
-                os.makedirs(out_path)
-            cv2.imwrite(os.path.join(out_path, os.path.basename(img_path)), undist_img)
+
+        cv2.imwrite(os.path.join(out_path, 'estimate', os.path.basename(data_path)), undist_img)
         undist_imgs.append(undist_img)
         
-        if std_samples > 0 and save_imgs:
+        if std_samples > 0:
             for i in tqdm(range(std_samples), desc='Sampling distortion coefficients'):
                 dc_sampled = np.random.normal(dist_coeff, dc_std)
                 newcameramtx_sampled, roi_sampled = cv2.getOptimalNewCameraMatrix(K, dc_sampled, (width, height), 1, (width, height))
@@ -208,6 +198,6 @@ def undistort(config: dict,
                     x, y, w, h = roi_sampled
                     undist_img_sampled = undist_img_sampled[y:y+h, x:x+w]
                 
-                cv2.imwrite(os.path.join(out_path, os.path.basename(img_path) + f'_sampled_{i}.jpg'), undist_img_sampled)
+                cv2.imwrite(os.path.join(out_path, 'sampled', os.path.basename(data_path) + f'_{i}.jpg'), undist_img_sampled)
 
     print('Undistortion complete!')

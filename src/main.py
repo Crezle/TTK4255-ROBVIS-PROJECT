@@ -5,12 +5,17 @@ from tools.termformatter import title
 
 import argparse
 import json
+import os
+import time
+import shutil
 
 class Config:
     def __init__(self, config_file):
+
+        self.json_file = config_file
+
         with open(config_file) as f:
             config = json.load(f)
-        self.run_all = config['run_all']
         self.calibration = config['calibration']
         self.undistortion = config['undistortion']
         self.board = config['board']
@@ -19,39 +24,33 @@ class Config:
 
 def main(config: Config):
 
-    K1, dist_coeff, std_int = camera.calibrate(config.calibration)
+    timestamp = time.strftime('%d.%m.%y-%H.%M.%S')
+    output_dir = os.path.join('output', timestamp)
+
+    os.mkdir(output_dir)
+    shutil.copy(config.json_file, os.path.join(output_dir, 'config.json'))
+
+    title(f'OUTPUT DIRECTORY: {output_dir}')
+    
+
+    camera.calibrate(config.calibration,
+                     output_dir)
 
     camera.undistort(config.undistortion,
-                     config.run_all,
-                     K1,
-                     dist_coeff,
-                     std_int)
+                     output_dir)
 
-    R, t = detection.detect_board(config.board,
-                                  config.run_all,
-                                  K1,
-                                  dist_coeff)
+    detection.detect_board(config.board,
+                           output_dir)
 
-    img_pts = transformation.world_to_img_corners(config.homography,
-                                                  config.board,
-                                                  config.run_all,
-                                                  R,
-                                                  t,
-                                                  K1,
-                                                  dist_coeff)
+    transformation.world_to_img_corners(config.homography,
+                                        config.board,
+                                        output_dir)
         
-    warped_img, K2 = transformation.warp_to_world(config.homography,
-                                                  config.run_all,
-                                                  img_pts)
+    transformation.warp_to_world(config.homography,
+                                 output_dir)
     
     detection.detect_cars(config.cars,
-                          config.run_all,
-                          warped_img,
-                          K1,
-                          K2,
-                          dist_coeff,
-                          R,
-                          t)
+                          output_dir)
     
     title('Done!')
 

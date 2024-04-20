@@ -4,6 +4,7 @@ import glob
 from cv2 import aruco
 import numpy as np
 from tools.termformatter import title
+from tools.dataloader import load_parameters
 from utils.transformation import change_origin
 import json
 
@@ -31,20 +32,12 @@ def _detect_markers(detector: aruco.ArucoDetector,
     return corners, ids, rejected
 
 def detect_board(config: dict,
-                 run_all: bool,
-                 K: np.ndarray ,
-                 dist_coeff: np.ndarray ):
+                 output_dir: str):
     """Detects the board in the image and estimates the pose.
     
     Args:
         config (dict): Dictionary containing the configuration parameters.
-        run_all (bool): Whether to run the whole process.
-        K (np.ndarray): Camera matrix. Defaults to None.
-        dist_coeff (np.ndarray): Distortion coefficients. Defaults to None.
-
-    Returns:
-        R (np.ndarray | None): Rotation matrix.
-        t (np.ndarray | None): Translation vector.
+        output_dir (str): Output directory for saving the results.
     """
     try:
         dictionary = config['dictionary']
@@ -53,38 +46,33 @@ def detect_board(config: dict,
         board_corners = change_origin(config)
         ids = config['ids']
         refined = config['refined']
-        calibration_dataset = config['calibration_dataset']
-        save_imgs = config['save_imgs']
+        calib_dataset = config['calibration_dataset']
         save_rejected = config['save_rejected']
-        save_params = config['save_params']
     except KeyError as e:
         raise KeyError(f'Could not find key {e} in config.')
     
+    if config['skip']:
+        title('BOARD DETECTION SKIPPED')
+        return
+        
     title("BOARD DETECTION")
 
-    img_path = f'data/detection/images/{img_set}/*.jpg'
-    out_path = f'data/detection/results/{img_set}'
-    calibration_dataset_path = f'data/calibration/results/{calibration_dataset}'
+    data_path = os.path.join('data', 'detection', img_set, '*.jpg')
+    out_path = os.path.join(output_dir, 'detection', 'board', img_set)
+    calib_path = os.path.join(output_dir, 'calibration', calib_dataset)
 
-    if config['skip']:
-        print('Skipping board detection, using previously saved results.')
-        try:
-            R = np.loadtxt(os.path.join(out_path, 'R.txt'))
-            t = np.loadtxt(os.path.join(out_path, 't.txt'))
-            return R, t
-        except FileNotFoundError:
-            Warning('Could not load previously saved results, returning None for R and tvec')
-            return None, None
-
-    elif not run_all:
-        print('Loading previously saved calibration parameters...')
-        try:
-            K           = np.loadtxt(os.path.join(calibration_dataset_path, 'K.txt'))
-            dist_coeff  = np.loadtxt(os.path.join(calibration_dataset_path, 'dist_coeff.txt')).flatten()
-        except FileNotFoundError:
-            raise FileNotFoundError(f'Could not find calibration dataset at {calibration_dataset_path}.')
-    else:
-        print('Using directly provided calibration parameters.')
+    print('Loading intrinsics parameters...')
+    try:
+        intr_params = load_parameters(calib_path,
+                                    'calibration',
+                                    calib_dataset,
+                                    ['K', 'dist_coeff'])
+    except FileNotFoundError as e:
+        raise FileNotFoundError(f'Could not load calibration parameters. {e}')
+    print('...success!\n')
+    
+    K = intr_params['K']
+    dist_coeff = intr_params['dist_coeff']
 
     assert K.shape == (3, 3), 'K must be a 3x3 matrix.'
     assert dist_coeff.shape == (5,), 'dist_coeff must be a 5-element vector.'
@@ -100,14 +88,13 @@ def detect_board(config: dict,
     assert detector is not None, 'Could not create ArUco detector.'
 
     print('Intializing board detection')
-    images = sorted(glob.glob(img_path))
+    images = sorted(glob.glob(data_path))
     assert len(images) > 0, 'No images found in the specified path.'
     assert img_idx < len(images), 'Image index out of bounds.'
     
     img = cv2.imread(images[img_idx])
 
-    if not os.path.exists(out_path):
-        os.makedirs(out_path)
+    os.makedirs(out_path)
 
     board_ids = np.array(ids, dtype='int32')
     board_corners = np.array(board_corners, dtype='float32')
@@ -140,46 +127,36 @@ def detect_board(config: dict,
         tvec = None
         Warning('Board pose not estimated, returning None for R and tvec.')
 
-    if save_imgs:
-        out_img = None
+    out_img = None
 
-        if ids is not None:
-            out_img = aruco.drawDetectedMarkers(img, corners, ids)
-            
-        if save_rejected and rejected is not None:
-            rej_img = aruco.drawDetectedMarkers(img, rejected, borderColor=(100, 0, 255))
-            cv2.imwrite(os.path.join(out_path, 'board_rejected.png'), rej_img)  
+    if ids is not None:
+        out_img = aruco.drawDetectedMarkers(img, corners, ids)
         
-        if num_det_markers > 0:
-            out_img = cv2.drawFrameAxes(out_img, K, dist_coeff, rvec, tvec, 3, 3)
-        else:
-            print('No markers detected, cannot draw axes.')
-        
-        if out_img is not None:
-            cv2.imwrite(os.path.join(out_path, 'board_result.png'), out_img)
-        else:
-            print('No image to save.')
+    if save_rejected and rejected is not None:
+        out_img = aruco.drawDetectedMarkers(img, rejected, borderColor=(100, 0, 255))
+    
+    if num_det_markers > 0:
+        out_img = cv2.drawFrameAxes(out_img, K, dist_coeff, rvec, tvec, 3, 3)
+    else:
+        print('No markers detected, cannot draw axes.')
+    
+    if out_img is not None:
+        cv2.imwrite(os.path.join(out_path, 'board_result.png'), out_img)
+    else:
+        print('No image to save.')
 
     # Convert rotation vector to rotation matrix
     R = cv2.Rodrigues(rvec)[0] if rvec is not None else None
     
     tvec = tvec.flatten()
-    if save_params and R is not None and tvec is not None:
+    try:
         np.savetxt(os.path.join(out_path, 'R.txt'), R)
         np.savetxt(os.path.join(out_path, 't.txt'), tvec)
-    
-    print('Returning extrinsics')
-    
-    return R, tvec
+    except FileNotFoundError as e:
+        Warning(f'Could not save results. {e}')
 
 def detect_cars(config: dict,
-                run_all: bool,
-                warped_img: np.ndarray,
-                K1: np.ndarray,
-                K2: np.ndarray,
-                dist_coeff: np.ndarray,
-                R: np.ndarray,
-                t: np.ndarray):
+                output_dir: str):
     """Detects cars in the image and exports directions to JSON-file for further processing.
 
     Args:
@@ -198,37 +175,67 @@ def detect_cars(config: dict,
         calibration_dataset = config['calibration_dataset']
         board_img_set = config['board_img_set']
         num_cars = config['num_cars']
-        save_imgs = config['save_imgs']
         hsv_levels = config['hsv_levels']
         thresholds = config['thresholds']
         pix_thrsh = config['min_distance']
     except KeyError as e:
         raise KeyError(f'Missing key in config: {e}')
 
+    if config['skip']:
+        title('CAR DETECTION SKIPPED')
+        return
+
     title('CAR DETECTION')
 
-    img_path = f'data/transformation/results/{img_set}/*.png'
-    intr_path = f'data/calibration/results/{calibration_dataset}'
-    extr_path = f'data/detection/results/{board_img_set}'
-    out_path = f'data/detection/results/{img_set}'
+    warped_img_path = os.path.join(output_dir, 'transformation', img_set, '*.png')
+    transf_path = os.path.join(output_dir, 'transformation', img_set)
+    intr_path = os.path.join(output_dir, 'calibration', calibration_dataset)
+    extr_path = os.path.join(output_dir, 'detection', 'board', board_img_set)
+    out_path = os.path.join(output_dir, 'detection', 'cars', img_set)
+
+
+
+
+    print('Loading previously saved parameters...')
+    try:
+        extr_params = load_parameters(extr_path,
+                                    'detection',
+                                    board_img_set,
+                                    ['R', 't'])
+        
+        intr_params = load_parameters(intr_path,
+                                    'calibration',
+                                    calibration_dataset,
+                                    ['K', 'dist_coeff'])
+        
+        K2 = load_parameters(transf_path,
+                            'transformation',
+                            img_set,
+                            ['K2'])['K2']
+    except FileNotFoundError as e:
+        raise FileNotFoundError(f'Could not load parameters. {e}')
+    print('...success!\n')
     
-    if config['skip']:
-        print('Skipping car detection')
-    elif not run_all:
-        print('Loading previously saved parameters...', end='')
-        try:
-            K1          = np.loadtxt(os.path.join(intr_path, 'K.txt'))
-            K2          = np.loadtxt(os.path.join(img_path, 'K2.txt'))
-            dist_coeff  = np.loadtxt(os.path.join(intr_path, 'dist_coeff.txt')).flatten()
-            R           = np.loadtxt(os.path.join(extr_path, 'R.txt'))
-            t           = np.loadtxt(os.path.join(extr_path, 't.txt')).flatten()
-            images = sorted(glob.glob(img_path))
-            warped_img = cv2.imread(images[img_idx])
-        except FileNotFoundError as e:
-            raise FileNotFoundError(f'File could not be found: {e}')
-        print('Success!')
-    else:
-        print('Using directly provided parameters.')
+    R = extr_params['R']
+    t = extr_params['t']
+    K1 = intr_params['K']
+    dist_coeff = intr_params['dist_coeff']
+    images = sorted(glob.glob(warped_img_path))
+    warped_img = cv2.imread(images[img_idx])
+    
+    # print('Success!')
+    # try:
+    #     K1          = np.loadtxt(os.path.join(intr_path, 'K.txt'))
+    #     K2          = np.loadtxt(os.path.join(transf_path, 'K2.txt'))
+    #     dist_coeff  = np.loadtxt(os.path.join(intr_path, 'dist_coeff.txt')).flatten()
+    #     R           = np.loadtxt(os.path.join(extr_path, 'R.txt'))
+    #     t           = np.loadtxt(os.path.join(extr_path, 't.txt')).flatten()
+    #     images = sorted(glob.glob(warped_img_path))
+    #     warped_img = cv2.imread(images[img_idx])
+    # except FileNotFoundError as e:
+    #     raise FileNotFoundError(f'File could not be found: {e}')
+    
+
 
     assert K1.shape == (3, 3), 'K must be a 3x3 matrix.'
     assert dist_coeff.flatten().shape == (5,), 'dist_coeff must be a 5-element vector.'
@@ -292,10 +299,11 @@ def detect_cars(config: dict,
     for pos in car_img_pos:
         out_img = cv2.circle(out_img, tuple(map(int, pos)), 10, (0, 255, 0), -1)
     
-    if save_imgs:
-        cv2.imwrite(os.path.join(out_path, 'kp_detection.png'), kp_img)
-        cv2.imwrite(os.path.join(out_path, 'car_detection.png'), out_img)
+    os.makedirs(out_path)
     
+    cv2.imwrite(os.path.join(out_path, 'kp_detection.png'), kp_img)
+    cv2.imwrite(os.path.join(out_path, 'car_detection.png'), out_img)
+
     for idx, pos in enumerate(car_img_pos):
         print(f'Car {idx} detected at image position {pos}.')
         
