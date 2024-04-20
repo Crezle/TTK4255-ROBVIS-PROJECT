@@ -167,3 +167,8 @@ Each run contains the following outputs,
 * img_corners.txt : Contains the image coordinates of the corners of the intersection image, the location of this corners have an offset 'border_size' specified in the configuration file.
 * K2.txt : Contains the transformation matrix that converts world units to pixels that also retains the center of image as the origin.
 * warped.png : Contains the intersection image warped onto the image plane.
+
+
+### [Configuration](output/example/config.json)
+
+The configuration for the run is also included in the output folder, for the sake of reproducibility.
