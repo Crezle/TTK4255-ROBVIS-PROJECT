@@ -89,6 +89,7 @@ def project_world_to_img(config: dict,
         raise ValueError('world_pts must be a 4x2 or 4x3 matrix.')
 
     # Only choose outer corners of each marker and offset them by brdr_sz
+    # TODO: Find a way to do this for ALL point correspondences for more accurate homography (UTILIZE ALL POINTS!)
     print('Calculating corners of crop of world image...')
     bordered_world_corners = np.array([world_corners[0, 0] + np.array([-brdr_sz, brdr_sz, 0]),
                             world_corners[1, 1] + np.array([brdr_sz, brdr_sz, 0]),
