@@ -8,9 +8,9 @@
         "skip": false
     },
     "undistortion": {
-        "img_set": "esp32_cars4",
+        "img_set": "esp32_building",
         "calibration_dataset": "esp_8x6_1.8",
-        "crop": true,
+        "crop": false,
         "std_samples": 5,
         "skip": false
     },
@@ -48,7 +48,7 @@
         "num_cars": 3,
         "hsv_levels": [[0, 40, 40], [20, 90, 90]],
         "thresholds": [0, 0, 0],
-        "min_distance": 200,
+        "min_distance": 150,
         "skip": false
     }
 }
