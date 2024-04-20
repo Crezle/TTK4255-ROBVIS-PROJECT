@@ -31,7 +31,7 @@ def _detect_markers(detector: aruco.ArucoDetector,
     
     return corners, ids, rejected
 
-def detect_board(config: dict,
+def estimate_pose(config: dict,
                  output_dir: str):
     """Detects the board in the image and estimates the pose.
     
@@ -258,8 +258,6 @@ def detect_cars(config: dict,
     
     bgr_img = cv2.cvtColor(masked_hsv, cv2.COLOR_HSV2BGR)
     
-    cv2.imwrite(os.path.join(out_path, 'masked_hsv.png'), bgr_img)
-    
     red = bgr_img[:, :, 2]
     green = bgr_img[:, :, 1]
     blue = bgr_img[:, :, 0]
@@ -270,7 +268,7 @@ def detect_cars(config: dict,
     
     binary_map = cv2.bitwise_or(cv2.bitwise_or(red, green), blue)
     
-    cv2.imwrite(os.path.join(out_path, 'binary_map.png'), binary_map)
+    
 
     detector = cv2.SIFT.create()
 
@@ -301,6 +299,8 @@ def detect_cars(config: dict,
     
     os.makedirs(out_path)
     
+    cv2.imwrite(os.path.join(out_path, 'masked_hsv.png'), bgr_img)
+    cv2.imwrite(os.path.join(out_path, 'binary_map.png'), binary_map)
     cv2.imwrite(os.path.join(out_path, 'kp_detection.png'), kp_img)
     cv2.imwrite(os.path.join(out_path, 'car_detection.png'), out_img)
 

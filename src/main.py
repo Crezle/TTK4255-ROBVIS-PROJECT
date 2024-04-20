@@ -39,14 +39,14 @@ def main(config: Config):
     camera.undistort(config.undistortion,
                      output_dir)
 
-    detection.detect_board(config.board,
+    detection.estimate_pose(config.board,
                            output_dir)
 
-    transformation.world_to_img_corners(config.homography,
+    transformation.project_world_to_img(config.homography,
                                         config.board,
                                         output_dir)
         
-    transformation.warp_to_world(config.homography,
+    transformation.perspective(config.homography,
                                  output_dir)
     
     detection.detect_cars(config.cars,

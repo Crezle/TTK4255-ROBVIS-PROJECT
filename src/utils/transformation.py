@@ -25,7 +25,7 @@ def change_origin(config: dict):
     
     return board_corners
 
-def world_to_img_corners(config: dict,
+def project_world_to_img(config: dict,
                          board_config: dict,
                          output_dir: str):
     """Convert world coordinates to image coordinates.
@@ -107,7 +107,7 @@ def world_to_img_corners(config: dict,
 
     np.savetxt(os.path.join(out_path, 'img_corners.txt'), img_corners)
 
-def warp_to_world(config: dict,
+def perspective(config: dict,
                   output_dir: str):
     """Warp the image to world coordinates.
 
