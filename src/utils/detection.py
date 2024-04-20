@@ -279,9 +279,6 @@ def detect_cars(config: dict,
     
     cv2.imwrite(os.path.join(out_path, 'masked_hsv.png'), bgr_img)
     cv2.imwrite(os.path.join(out_path, 'binary_map.png'), binary_map)
-    cv2.imwrite(os.path.join(out_path, 'binary_map_red.png'), red)
-    cv2.imwrite(os.path.join(out_path, 'binary_map_blue.png'), green)
-    cv2.imwrite(os.path.join(out_path, 'binary_map_green.png'), blue)
     cv2.imwrite(os.path.join(out_path, 'kp_detection.png'), kp_img)
     cv2.imwrite(os.path.join(out_path, 'car_detection.png'), out_img)
 
