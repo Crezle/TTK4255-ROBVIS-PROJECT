@@ -161,13 +161,7 @@ def detect_cars(config: dict,
 
     Args:
         config (dict): Configuration dictionary.
-        run_all (bool): Run all steps.
-        warped_img (np.ndarray): Warped image.
-        K1 (np.ndarray): Intrinsic camera matrix.
-        K2 (np.ndarray): World to image units conversion matrix.
-        dist_coeff (np.ndarray): Distortion coefficients.
-        R (np.ndarray): Rotation matrix.
-        t (np.ndarray): Translation vector.
+        output_dir (str): Output directory.
     """
     try:
         img_set = config['warp_img_set']

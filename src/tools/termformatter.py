@@ -1,7 +1,11 @@
 import os    
 
 def title(title: str):
-    # Get the size of the terminal
+    """Print a big, pretty formatted title.
+    
+    Args:
+        title (str): The title to print.
+    """
     try:
         columns, _ = os.get_terminal_size()
     except OSError:

@@ -5,6 +5,12 @@ from tqdm import tqdm
 
 def rename_images(directory: str,
                   extension: str):
+    """Rename images in a directory.
+    
+    Args:
+        directory (str): The directory containing the images.
+        extension (str): The extension of the images to rename.
+    """
 
     images = sorted(glob.glob(os.path.join(directory, extension)))
 

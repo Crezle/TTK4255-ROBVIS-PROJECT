@@ -123,11 +123,11 @@ while to run custom, the argument is needed,
 python src/main.py --config True
 ```
 
+For evulation of the code, the main functionality is in the [utils](src/utils/) folder, where all the code is modularized for easy testing of each part. The [tools](src/tools/) folder contains peripheral code for ease of use and operation of the ESP32.
+
 ### Configuration
 
 The configuration file is used to specify how the code should run. Default and custom are currently identical, but the idea is to **only** change the custom file if other parameters is desired to be tested as the default file is used for the final results.
-
-
 
 ## Outputs
 

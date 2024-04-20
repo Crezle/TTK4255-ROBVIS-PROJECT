@@ -40,19 +40,19 @@ def main(config: Config):
                      output_dir)
 
     detection.estimate_pose(config.board,
-                           output_dir)
+                            output_dir)
 
     transformation.project_world_to_img(config.homography,
                                         config.board,
                                         output_dir)
         
     transformation.perspective(config.homography,
-                                 output_dir)
+                               output_dir)
     
     detection.detect_cars(config.cars,
                           output_dir)
     
-    title('Done!')
+    title('FINISHED, ALL RESULTS SAVED IN OUTPUT DIRECTORY.')
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Script for running the project.',

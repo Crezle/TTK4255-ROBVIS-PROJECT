@@ -108,17 +108,12 @@ def project_world_to_img(config: dict,
     np.savetxt(os.path.join(out_path, 'img_corners.txt'), img_corners)
 
 def perspective(config: dict,
-                  output_dir: str):
+                output_dir: str):
     """Warp the image to world coordinates.
 
     Args:
         config (dict): Configuration dictionary.
-        run_all (bool): Run all steps.
-        src_pts (np.ndarray): Image coordinates of world corners.
-
-    Returns:
-        out_img (np.ndarray | None): Warped image.
-        K2 (np.ndarray | None): World to image units conversion matrix.
+        output_dir (str): Output directory.
     """
     try:
         img_set = config['img_set']

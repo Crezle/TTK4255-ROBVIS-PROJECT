@@ -26,11 +26,7 @@ def calibrate(config: dict,
 
     Args:
         config (dict): Configuration dictionary.
-
-    Returns:
-        K (np.ndarray | None): Intrinsic camera matrix.
-        dist_coeff (np.ndarray | None): Distortion coefficients.
-        std_int (np.ndarray | None): Standard deviation of intrinsic parameters.
+        output_dir (str): Output directory.
     """
     try:
         dataset = config['dataset']
