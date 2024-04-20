@@ -1,5 +1,6 @@
 # Custom ignore
-output/**
+output/*
+!output/example/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
