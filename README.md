@@ -144,18 +144,18 @@ Each run contains the following outputs,
   * std_int             : Contains the standard deviation of each estimate.
   * u_all.npy           : Detected checkerboard locations in image coordinates.
   * X_all.npy           : Detected checkerboard locations in 3D space coordinates.
-* [failed](output/example/calibration/failed/)      : Contains images that the code failed to detect the specified number of corners.
+* [failed](output/example/calibration/failed/esp_8x6_1.8/)      : Contains images that the code failed to detect the specified number of corners.
 
-### [Undistorted](output/example/undistorted/)
+### [Undistorted](output/example/undistorted/esp32_cars4/)
 * [estimate](output/example/undistorted/esp32_cars4/estimate/) : Contains undistorted images using the estimate of the calibration parameters.
 * [sampled](output/example/undistorted/esp32_cars4/sampled/)   : Contains undistorted images using a random sample from the distribution of the calibration parameters, number of samples specified in the configuration file.
 
 ### [Detection](output/example/detection/)
-* [board](output/example/detection/board/) : Contains modified version of input image along with pose estimation of the world frame.
+* [board](output/example/detection/board/esp32_cars4/) : Contains modified version of input image along with pose estimation of the world frame.
   * board_result.png : Image with frame axes and detected corners.
   * R.txt           : Estimated rotation matrix $\mathbf{R}$.
   * t.txt           : Estimated translation vector $\mathbf{t}$.
-* [cars](output/example/detection/cars/)   : Contains modified version of input image along with detected cars.
+* [cars](output/example/detection/cars/esp32_cars4/)   : Contains modified version of input image along with detected cars.
   * masked_hsv.png : Image with HSV mask applied, the limit values are specified in the configuration file.
   * binary_map.png : Contains thresholded version of HSV masked image, the threshold values are specified in the configuration file.
   * kp_detection.png : Modified version of input image with detected keypoints along with their sizes.
@@ -163,7 +163,7 @@ Each run contains the following outputs,
   * data.json : Contains the assumed directions of cars, formatted to be used in the ESP32.
   In this context, the input image is the warped image from "Transformations".
 
-### [Transformation](output/example/transformation/)
+### [Transformation](output/example/transformation/esp32_cars4/)
 * img_corners.txt : Contains the image coordinates of the corners of the intersection image, the location of this corners have an offset 'border_size' specified in the configuration file.
 * K2.txt : Contains the transformation matrix that converts world units to pixels that also retains the center of image as the origin.
 * warped.png : Contains the intersection image warped onto the image plane.
