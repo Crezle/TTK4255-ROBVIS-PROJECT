@@ -94,7 +94,8 @@ def estimate_pose(config: dict,
     
     img = cv2.imread(images[img_idx])
 
-    os.makedirs(out_path)
+    if not os.path.exists(out_path):
+        os.makedirs(out_path)
 
     board_ids = np.array(ids, dtype='int32')
     board_corners = np.array(board_corners, dtype='float32')
@@ -127,13 +128,13 @@ def estimate_pose(config: dict,
         tvec = None
         Warning('Board pose not estimated, returning None for R and tvec.')
 
-    out_img = None
+    out_img = img.copy()
 
     if ids is not None:
-        out_img = aruco.drawDetectedMarkers(img, corners, ids)
+        out_img = aruco.drawDetectedMarkers(out_img, corners, ids)
         
     if save_rejected and rejected is not None:
-        out_img = aruco.drawDetectedMarkers(img, rejected, borderColor=(100, 0, 255))
+        out_img = aruco.drawDetectedMarkers(out_img, rejected, borderColor=(100, 0, 255))
     
     if num_det_markers > 0:
         out_img = cv2.drawFrameAxes(out_img, K, dist_coeff, rvec, tvec, 3, 3)
@@ -165,7 +166,6 @@ def detect_cars(config: dict,
     """
     try:
         img_set = config['warp_img_set']
-        img_idx = config['img_idx']
         calibration_dataset = config['calibration_dataset']
         board_img_set = config['board_img_set']
         num_cars = config['num_cars']
@@ -181,7 +181,8 @@ def detect_cars(config: dict,
 
     title('CAR DETECTION')
 
-    warped_img_path = os.path.join(output_dir, 'transformation', img_set, '*.png')
+    warped_img_path = os.path.join(output_dir, 'transformation', img_set, 'warped.png')
+    marked_img_path = os.path.join(output_dir, 'transformation', img_set, 'marked.png')
     transf_path = os.path.join(output_dir, 'transformation', img_set)
     intr_path = os.path.join(output_dir, 'calibration', calibration_dataset)
     extr_path = os.path.join(output_dir, 'detection', 'board', board_img_set)
@@ -214,100 +215,105 @@ def detect_cars(config: dict,
     t = extr_params['t']
     K1 = intr_params['K']
     dist_coeff = intr_params['dist_coeff']
-    images = sorted(glob.glob(warped_img_path))
-    warped_img = cv2.imread(images[img_idx])
+    
+    warped_img = cv2.imread(warped_img_path)
+    marked_img = cv2.imread(marked_img_path)
 
     assert K1.shape == (3, 3), 'K must be a 3x3 matrix.'
     assert dist_coeff.flatten().shape == (5,), 'dist_coeff must be a 5-element vector.'
     assert R.shape == (3, 3), 'R must be a 3x3 matrix.'
     assert t.flatten().shape == (3,), 't must be a 3-element vector.'
 
-    print('Detecting car features...', end='')
+    for img_idx, input_img in enumerate([warped_img, marked_img]):
 
-    # Normalize image such that brightness is uniform and avoid zero division
-    hsv_img = cv2.cvtColor(warped_img, cv2.COLOR_BGR2HSV)
+        print('Detecting car features...', end='')
 
-    lower = np.array(hsv_levels[0])
-    upper = np.array(hsv_levels[1])
-    lower = lower * (255/100)
-    upper = upper * (255/100)
+        # Normalize image such that brightness is uniform and avoid zero division
+        hsv_img = cv2.cvtColor(input_img, cv2.COLOR_BGR2HSV)
 
-    mask = cv2.inRange(hsv_img, lower, upper)
-    
-    masked_hsv = cv2.bitwise_and(hsv_img, hsv_img, mask=mask)
-    
-    bgr_img = cv2.cvtColor(masked_hsv, cv2.COLOR_HSV2BGR)
-    
-    red = bgr_img[:, :, 2]
-    green = bgr_img[:, :, 1]
-    blue = bgr_img[:, :, 0]
+        lower = np.array(hsv_levels[0])
+        upper = np.array(hsv_levels[1])
+        lower = lower * (255/100)
+        upper = upper * (255/100)
 
-    red = cv2.threshold(red, thresholds[0], 255, cv2.THRESH_BINARY)[1]
-    green = cv2.threshold(green, thresholds[1], 255, cv2.THRESH_BINARY)[1]
-    blue = cv2.threshold(blue, thresholds[2], 255, cv2.THRESH_BINARY)[1]
-    
-    binary_map = cv2.bitwise_or(cv2.bitwise_or(red, green), blue)
-
-    detector = cv2.SIFT.create()
-
-    keypoints = detector.detect(bgr_img, binary_map)
-    keypoints = np.array(keypoints)
-    print(f'Found {len(keypoints)} keypoints.')
-
-    kp_img = warped_img.copy()
-    kp_img = cv2.drawKeypoints(kp_img, keypoints, kp_img, flags=cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
-    
-    sizes = np.array([kp.size for kp in keypoints])
-    
-    largest_kps = keypoints[np.argsort(sizes)]
-    
-    car_img_pos = []
-    for kp in reversed(largest_kps):
-        if any(np.linalg.norm(np.array(kp.pt) - np.array(pos)) < pix_thrsh for pos in car_img_pos):
-            continue
-
-        car_img_pos.append(kp.pt)
-
-        if len(car_img_pos) == num_cars:
-            break
-    
-    out_img = warped_img
-    for pos in car_img_pos:
-        out_img = cv2.circle(out_img, tuple(map(int, pos)), 10, (0, 255, 0), -1)
-    
-    os.makedirs(out_path)
-    
-    cv2.imwrite(os.path.join(out_path, 'masked_hsv.png'), bgr_img)
-    cv2.imwrite(os.path.join(out_path, 'binary_map.png'), binary_map)
-    cv2.imwrite(os.path.join(out_path, 'kp_detection.png'), kp_img)
-    cv2.imwrite(os.path.join(out_path, 'car_detection.png'), out_img)
-
-    for idx, pos in enumerate(car_img_pos):
-        print(f'Car {idx} detected at image position {pos}.')
+        mask = cv2.inRange(hsv_img, lower, upper)
         
-    print('\nChanging the coordinates to be given with respect to center of image and in world units (centimeters)...')
+        masked_hsv = cv2.bitwise_and(hsv_img, hsv_img, mask=mask)
+        
+        bgr_img = cv2.cvtColor(masked_hsv, cv2.COLOR_HSV2BGR)
+        
+        red = bgr_img[:, :, 2]
+        green = bgr_img[:, :, 1]
+        blue = bgr_img[:, :, 0]
 
-    car_direction = {"direction1": 0,
-                     "direction2": 0,
-                     "direction3": 0,
-                     "direction4": 0}
+        red = cv2.threshold(red, thresholds[0], 255, cv2.THRESH_BINARY)[1]
+        green = cv2.threshold(green, thresholds[1], 255, cv2.THRESH_BINARY)[1]
+        blue = cv2.threshold(blue, thresholds[2], 255, cv2.THRESH_BINARY)[1]
+        
+        binary_map = cv2.bitwise_or(cv2.bitwise_or(red, green), blue)
 
-    for i in range(len(car_img_pos)):
-        car_img_pos[i] = np.array(car_img_pos[i]) - np.array([warped_img.shape[1] / 2, warped_img.shape[0] / 2])
-        car_img_pos[i] = (np.linalg.inv(K2) @ np.concatenate((car_img_pos[i].T, np.ones(1)), axis=0))[:2]
-        print(f'Car {i} detected at image position {car_img_pos[i]}.')
-        if car_img_pos[i][0] >= 5.5 and np.abs(car_img_pos[i][1]) <= 3.5:
-            car_direction["direction1"] += 1
-        elif np.abs(car_img_pos[i][0]) <= 3.5 and car_img_pos[i][1] >= 5.5:
-            car_direction["direction2"] += 1
-        elif car_img_pos[i][0] <= -5.5 and car_img_pos[i][1] <= 3.5:
-            car_direction["direction3"] += 1
-        elif np.abs(car_img_pos[i][0]) <= 3.5 and car_img_pos[i][1] <= -5.5:
-            car_direction["direction4"] += 1
-        else:
-            print(f'Car {i} at undetermined position, cannot determine direction.')
+        detector = cv2.SIFT.create()
 
-    print("Exporting car directions to JSON-file...", end='')
-    with open(os.path.join(out_path, 'data.json'), 'w') as f:
-        json.dump(car_direction, f, indent=4)
-    print("Success!")
+        keypoints = detector.detect(bgr_img, binary_map)
+        keypoints = np.array(keypoints)
+        print(f'Found {len(keypoints)} keypoints.')
+
+        kp_img = input_img.copy()
+        kp_img = cv2.drawKeypoints(kp_img, keypoints, kp_img, flags=cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
+        
+        sizes = np.array([kp.size for kp in keypoints])
+        
+        largest_kps = keypoints[np.argsort(sizes)]
+        
+        car_img_pos = []
+        for kp in reversed(largest_kps):
+            if any(np.linalg.norm(np.array(kp.pt) - np.array(pos)) < pix_thrsh for pos in car_img_pos):
+                continue
+
+            car_img_pos.append(kp.pt)
+
+            if len(car_img_pos) == num_cars:
+                break
+        
+        out_img = input_img.copy()
+        for pos in car_img_pos:
+            out_img = cv2.circle(out_img, tuple(map(int, pos)), 10, (0, 255, 0), -1)
+        
+        if not os.path.exists(out_path):
+            os.makedirs(out_path)
+        
+        cv2.imwrite(os.path.join(out_path, f'masked_hsv_{img_idx}.png'), bgr_img)
+        cv2.imwrite(os.path.join(out_path, f'binary_map_{img_idx}.png'), binary_map)
+        cv2.imwrite(os.path.join(out_path, f'kp_detection_{img_idx}.png'), kp_img)
+        cv2.imwrite(os.path.join(out_path, f'car_detection_{img_idx}.png'), out_img)
+
+        for idx, pos in enumerate(car_img_pos):
+            print(f'Car {idx} detected at image position {pos}.')
+            
+        print('\nChanging the coordinates to be given with respect to center of image and in world units (centimeters)...')
+
+        # Only do this for above perspective image
+        if img_idx == 0:
+            car_direction = {"direction1": 0,
+                             "direction2": 0,
+                             "direction3": 0,
+                             "direction4": 0}
+            for i in range(len(car_img_pos)):
+                car_img_pos[i] = np.array(car_img_pos[i]) - np.array([input_img.shape[1] / 2, input_img.shape[0] / 2])
+                car_img_pos[i] = (np.linalg.inv(K2) @ np.concatenate((car_img_pos[i].T, np.ones(1)), axis=0))[:2]
+                print(f'Car {i} detected at image position {car_img_pos[i]}.')
+                if car_img_pos[i][0] >= 5.5 and np.abs(car_img_pos[i][1]) <= 3.5:
+                    car_direction["direction1"] += 1
+                elif np.abs(car_img_pos[i][0]) <= 3.5 and car_img_pos[i][1] >= 5.5:
+                    car_direction["direction2"] += 1
+                elif car_img_pos[i][0] <= -5.5 and car_img_pos[i][1] <= 3.5:
+                    car_direction["direction3"] += 1
+                elif np.abs(car_img_pos[i][0]) <= 3.5 and car_img_pos[i][1] <= -5.5:
+                    car_direction["direction4"] += 1
+                else:
+                    print(f'Car {i} at undetermined position, cannot determine direction.')
+
+            print("Exporting car directions to JSON-file...", end='')
+            with open(os.path.join(out_path, f'data.json'), 'w') as f:
+                json.dump(car_direction, f, indent=4)
+            print("Success!")

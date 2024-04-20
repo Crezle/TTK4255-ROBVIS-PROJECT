@@ -64,8 +64,10 @@ def calibrate(config: dict,
 
     detect_flags = cv2.CALIB_CB_ADAPTIVE_THRESH + cv2.CALIB_CB_NORMALIZE_IMAGE + cv2.CALIB_CB_FAST_CHECK
 
-    os.makedirs(out_path)
-    os.makedirs(fail_path)
+    if not os.path.exists(out_path):
+        os.makedirs(out_path)
+    if not os.path.exists(fail_path):
+        os.makedirs(fail_path)
 
     if os.path.exists(os.path.join(out_path, 'u_all.npy')) and not rerun_detection:
         u_all = np.load(os.path.join(out_path, 'u_all.npy'))
@@ -167,10 +169,10 @@ def undistort(config: dict,
 
     images = glob.glob(data_path)
     undist_imgs = []
-    
+
     os.makedirs(os.path.join(out_path, 'estimate'))
     os.makedirs(os.path.join(out_path, 'sampled'))
-    
+
     for data_path in tqdm(sorted(images), desc=f'Undistorting images in {img_set}'):
         
         img = cv2.imread(data_path)
