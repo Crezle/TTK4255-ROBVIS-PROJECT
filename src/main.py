@@ -27,7 +27,7 @@ def main(config: Config):
     timestamp = time.strftime('%d.%m.%y-%H.%M.%S')
     output_dir = os.path.join('output', timestamp)
 
-    os.mkdir(output_dir)
+    os.makedirs(output_dir)
     shutil.copy(config.json_file, os.path.join(output_dir, 'config.json'))
 
     title(f'OUTPUT DIRECTORY: {output_dir}')
