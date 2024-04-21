@@ -172,6 +172,7 @@ def detect_cars(config: dict,
         hsv_levels = config['hsv_levels']
         thresholds = config['thresholds']
         pix_thrsh = config['min_distance']
+        detector_type = config['detector_type']
     except KeyError as e:
         raise KeyError(f'Missing key in config: {e}')
 
@@ -249,10 +250,16 @@ def detect_cars(config: dict,
         red = cv2.threshold(red, thresholds[0], 255, cv2.THRESH_BINARY)[1]
         green = cv2.threshold(green, thresholds[1], 255, cv2.THRESH_BINARY)[1]
         blue = cv2.threshold(blue, thresholds[2], 255, cv2.THRESH_BINARY)[1]
-        
+
         binary_map = cv2.bitwise_or(cv2.bitwise_or(red, green), blue)
 
-        detector = cv2.SIFT.create()
+        match detector_type:
+            case 'sift':
+                detector = cv2.SIFT.create()
+            case 'orb':
+                detector = cv2.ORB.create()
+            case _:
+                raise ValueError(f'Detector type: {detector_type}, is not supported.')
 
         keypoints = detector.detect(bgr_img, binary_map)
         keypoints = np.array(keypoints)
@@ -290,10 +297,10 @@ def detect_cars(config: dict,
         for idx, pos in enumerate(car_img_pos):
             print(f'Car {idx} detected at image position {pos}.')
             
-        print('\nChanging the coordinates to be given with respect to center of image and in world units (centimeters)...')
-
+        
         # Only do this for above perspective image
         if img_idx == 0:
+            print('\nChanging the coordinates to be given with respect to center of image and in world units (centimeters)...')
             car_direction = {"direction1": 0,
                              "direction2": 0,
                              "direction3": 0,
