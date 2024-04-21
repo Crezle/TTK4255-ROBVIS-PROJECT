@@ -173,6 +173,8 @@ def detect_cars(config: dict,
         thresholds = config['thresholds']
         pix_thrsh = config['min_distance']
         detector_type = config['detector_type']
+        road_width = config['road_width']
+        road_dist_from_orig = config['road_dist_from_orig']
     except KeyError as e:
         raise KeyError(f'Missing key in config: {e}')
 
@@ -234,8 +236,13 @@ def detect_cars(config: dict,
 
         lower = np.array(hsv_levels[0])
         upper = np.array(hsv_levels[1])
-        lower = lower * (255/100)
-        upper = upper * (255/100)
+        
+        # Usual S and V values are in range 0-100, but OpenCV use 0-255 for 8-bit images
+        # H values are in range 0-360, but OpenCV use 0-180 for 8-bit images
+        lower[1:] = lower[1:] * (255/100)
+        lower[0] = lower[0] * (180/360)
+        upper[1:] = upper[1:] * (255/100)
+        upper[0] = upper[0] * (180/360)
 
         mask = cv2.inRange(hsv_img, lower, upper)
         
@@ -294,10 +301,6 @@ def detect_cars(config: dict,
         cv2.imwrite(os.path.join(out_path, f'kp_detection_{img_idx}.png'), kp_img)
         cv2.imwrite(os.path.join(out_path, f'car_detection_{img_idx}.png'), out_img)
 
-        for idx, pos in enumerate(car_img_pos):
-            print(f'Car {idx} detected at image position {pos}.')
-            
-        
         # Only do this for above perspective image
         if img_idx == 0:
             print('\nChanging the coordinates to be given with respect to center of image and in world units (centimeters)...')
@@ -309,13 +312,13 @@ def detect_cars(config: dict,
                 car_img_pos[i] = np.array(car_img_pos[i]) - np.array([input_img.shape[1] / 2, input_img.shape[0] / 2])
                 car_img_pos[i] = (np.linalg.inv(K2) @ np.concatenate((car_img_pos[i].T, np.ones(1)), axis=0))[:2]
                 print(f'Car {i} detected at image position {car_img_pos[i]}.')
-                if car_img_pos[i][0] >= 5.5 and np.abs(car_img_pos[i][1]) <= 3.5:
+                if car_img_pos[i][0] >= road_dist_from_orig and np.abs(car_img_pos[i][1]) <= road_width:
                     car_direction["direction1"] += 1
-                elif np.abs(car_img_pos[i][0]) <= 3.5 and car_img_pos[i][1] >= 5.5:
+                elif np.abs(car_img_pos[i][0]) <= road_width and car_img_pos[i][1] >= road_dist_from_orig:
                     car_direction["direction2"] += 1
-                elif car_img_pos[i][0] <= -5.5 and car_img_pos[i][1] <= 3.5:
+                elif car_img_pos[i][0] <= -road_dist_from_orig and car_img_pos[i][1] <= road_width:
                     car_direction["direction3"] += 1
-                elif np.abs(car_img_pos[i][0]) <= 3.5 and car_img_pos[i][1] <= -5.5:
+                elif np.abs(car_img_pos[i][0]) <= road_width and car_img_pos[i][1] <= -road_dist_from_orig:
                     car_direction["direction4"] += 1
                 else:
                     print(f'Car {i} at undetermined position, cannot determine direction.')

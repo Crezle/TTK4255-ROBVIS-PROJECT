@@ -49,6 +49,8 @@
         "thresholds": [0, 0, 0],
         "min_distance": 150,
         "detector_type": "sift",
+        "road_width": 3.5,
+        "road_dist_from_orig": 5.5,
         "skip": false
     }
 }
