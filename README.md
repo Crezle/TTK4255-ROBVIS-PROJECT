@@ -102,7 +102,7 @@ The tasks of the [main code](src/main.py) is sectioned by,
 3. Estimating pose of world frame by using point correspondences of image and world coordinates of ArUco tags (Image coords found through OpenCV and world coords predetermined in centimeters), yielding the rotation $\mathbf{R}$ and translation $\mathbf{t}$ of the camera.
 4. Projecting the corners of the intersection image onto the image plane.
 5. Estimating the homography between the intersection and "above perspective" image to then project the intersection image onto the image plane.
-6. Detecting and estimating the position and direction of cars in the image plane and then exporting the directions data for potential use in the ESP32.
+6. Detecting and estimating the position and direction of cars in the image plane using feature descriptors and custom algorithm to determine car positions and then exporting the estimated directions data for potential use in the ESP32.
 
 ### Practicalities
 
