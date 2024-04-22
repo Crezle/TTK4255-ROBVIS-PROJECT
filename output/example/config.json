@@ -42,13 +42,15 @@
     },
     "cars": {
         "warp_img_set": "esp32_cars4",
-        "img_idx": 0,
         "calibration_dataset": "esp_8x6_1.8",
         "board_img_set": "esp32_cars4",
         "num_cars": 3,
         "hsv_levels": [[0, 40, 40], [20, 90, 90]],
         "thresholds": [0, 0, 0],
         "min_distance": 150,
+        "detector_type": "sift",
+        "road_width": 3.5,
+        "road_dist_from_orig": 5.5,
         "skip": false
     }
 }
