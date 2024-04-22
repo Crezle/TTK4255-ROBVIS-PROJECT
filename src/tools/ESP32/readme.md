@@ -12,7 +12,7 @@ This folder contains the necessary tools and code for the ESP32-CAM microcontrol
 
 ## Introduction
 
-This part of the project is structured in two parts firstly the firmware for the esp32-cam which is inside the src folder and the dependent libraries in the lib/esp32cam folder. The second part is the python script(ESP32.py) which makes the communication with the Google Drive server and the esp32-cam server to get the capture. 
+This part of the project is structured in two ways firstly the firmware for the esp32-cam which is inside the src folder and the dependent libraries in the lib/esp32cam folder. The second part is the python script(ESP32.py) which makes the communication with the Google Drive server and the esp32-cam server to get the capture. 
 
 
 ## Installation
