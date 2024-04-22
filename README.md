@@ -2,9 +2,8 @@
 
 Code for Robotic Vision project in TTK4255 by Christian Le and Klevis Resuli.
 
-## Project Description
+## Project Description: Smart Traffic Control System
 
-Smart traffic control system
 The idea is creating a system based on ESP32-Cam that is going to control the traffic light based on the number of cars on each side of an intersection making the traffic easier and also giving priority to emergencies(case of an ambulance being in the intersection).
 
 The following main code is a proof of concept that does calibration, undistortion, pose estimation and homography to estimate positions and directions of cars.
@@ -40,25 +39,25 @@ or if using Visual Studio Code, look for **robvis_project** environment in (CTRL
 
 Below are the specifications for each calibration set used in this project.
 
-* Chessboard (for calibration)
+* Chessboard:
   - Square Size          :  2.9 cm
   - Corners (w x h)      :  7x7 = 49
   - Notes                :  Has a crack from C6 to H6, in addition to it being foldable, having a crack in the middle.
   - Location             : [data/calibration/esp_7x7_2.9](data/calibration/esp_7x7_2.9/)
 
-* Checkerboard (on monitor in dark room)
+* Checkerboard | Older | Dark Room:
   - Square Size          :  2.0 cm
   - Corners (w x h)      :  9x6 = 54
   - Notes                :  Camera got melted after this session due to high heat from the ESP32, thus both this set and chessboard set are outdated due to the potential of changed distortion parameters.
   - Location             : [data/calibration/esp_9x6_2.0](data/calibration/esp_9x6_2.0/)
 
-* Checkerboard (newer, in normal office environment)
+* Checkerboard | Newest | Office:
   - Square Size          :  1.8 cm
   - Corners (w x h)      :  8x6 = 48
   - Notes                :  This set was used for the final calibration.
   - Location             : [data/calibration/esp_8x6_1.8](data/calibration/esp_8x6_1.8/)
 
-* Asus Zenfone 8:
+* Checkerboard | Zenfone | Office:
   - Square Size          :  2.3 cm
   - Corners (w x h)      :  8x6 = 48
   - Notes                :  Secondary camera when ESP32 camera was unavailable.
@@ -77,7 +76,7 @@ Note that square sizes are given in centimeters, thus the unit for all distances
 
 * ArUco Tags
   - Sqr. Size            :  3.0 cm
-  - Type                 :  APRILTAG 36h11
+  - Type                 :  AprilTag 36h11
   - Source               :  [Clark's Docs](https://docs.cbteeple.com/robot/april-tags)
 
 * Intersection Image
@@ -110,7 +109,7 @@ No explicit task of detecting the ambulances was done, but the last task is set 
 
 The part where the ESP32 uses the direction data to control the traffic light is not mentioned either as it is not relevant for the course, but can be found in the [ESP32 code](src/tools/ESP32/).
 
-## How-to-use
+## How-to-Use
 
 The script can simply be run in two different configurations, specified in [default.json](configs/default.json) and [custom.json](configs/custom.json).
 
@@ -121,7 +120,7 @@ python src/main.py
 
 while to run custom, the argument is needed,
 ```bash
-python src/main.py --config True
+python src/main.py --use_custom True
 ```
 
 For evulation of the code, the main functionality is in the [utils](src/utils/) folder, where all the code is modularized for easy testing of each part. The [tools](src/tools/) folder contains peripheral code for ease of use and operation of the ESP32.
@@ -139,7 +138,7 @@ Each run contains the following outputs,
 ### [Calibration](output/example/calibration/)
 
 * [data_name](output/example/calibration/esp_8x6_1.8/) : Shares the same name as the calibration set used, containing the estimated parameters.
-  * dist_coeff.txt              : Contains the mean of estimated distortion parameters $k_1, k_2, p_1, p_2, k_3$.
+  * dist_coeff.txt      : Contains the mean of estimated distortion parameters $k_1, k_2, p_1, p_2, k_3$.
   * image_size.txt      : Contains image dimensions, used to check if calibration images are of same dimension.
   * K.txt               : Contains the mean estimated camera intrinsics matrix $\mathbf{K}$.
   * std_int             : Contains the standard deviation of each estimate.
